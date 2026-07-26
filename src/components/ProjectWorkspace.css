@@ -1,21 +1,529 @@
-.project-workspace {
+/* 项目工作区：左侧功能导航 + 接口列表侧栏 + 主内容区 */
+
+.workspace {
+  display: flex;
+  gap: 6px;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* === 左侧功能导航栏 === */
+
+.workspace-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 68px;
+  padding: 14px 7px;
+}
+
+/* === 右侧功能容器：与主页内容区同款的纸面卡片 === */
+
+.workspace-panel {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background-color: var(--color-bg-2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--shadow-subtle);
+}
+
+.workspace-rail-project {
+  display: inline-flex;
+  margin-bottom: 14px;
+}
+
+.workspace-rail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 2px;
+  border: none;
+  border-radius: var(--border-radius-medium);
+  background: transparent;
+  color: var(--c-ink-secondary);
+  font-size: 17px;
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.workspace-rail-item:hover {
+  background-color: rgba(56, 53, 47, 0.05);
+  color: var(--c-ink-primary);
+}
+
+.workspace-rail-item-active,
+.workspace-rail-item-active:hover {
+  background-color: var(--c-accent-faint);
+  color: var(--c-accent);
+}
+
+.workspace-rail-label {
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* === 接口列表侧栏 === */
+
+.workspace-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 264px;
+  border-right: 1px solid var(--color-neutral-3);
+}
+
+.workspace-sidebar-header {
+  padding: 16px 16px 10px;
+}
+
+.workspace-sidebar-title {
+  margin: 0;
+  font-size: 17px;
+  color: var(--color-text-1);
+}
+
+.workspace-sidebar-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px 12px;
+}
+
+.workspace-sidebar-search {
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-sidebar-tree {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 16px;
+}
+
+.workspace-sidebar-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 40px 12px;
+  text-align: center;
+}
+
+.workspace-sidebar-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 6px;
+  border-radius: var(--border-radius-medium);
+  background-color: var(--c-surface);
+  color: var(--c-ink-tertiary);
+  font-size: 20px;
+}
+
+.workspace-sidebar-empty-text {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-2);
+}
+
+.workspace-sidebar-empty-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+/* === 主内容区 === */
+
+.workspace-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-neutral-3);
+}
+
+.workspace-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.workspace-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: var(--border-radius-medium);
+  background: transparent;
+  color: var(--c-ink-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.workspace-toolbar-btn:hover {
+  background-color: rgba(56, 53, 47, 0.05);
+  color: var(--c-ink-primary);
+}
+
+/* === 快捷请求标签页 === */
+
+.workspace-request-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 180px;
+  padding: 5px 8px 5px 10px;
+  border-radius: var(--border-radius-medium);
+  color: var(--c-ink-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.workspace-request-tab:hover {
+  background-color: rgba(56, 53, 47, 0.05);
+  color: var(--c-ink-primary);
+}
+
+.workspace-request-tab-active,
+.workspace-request-tab-active:hover {
+  background-color: var(--c-accent-faint);
+  color: var(--c-accent);
+}
+
+.workspace-request-tab-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: #f7ba1e;
+}
+
+.workspace-request-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-request-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition:
+    background-color var(--ease-out),
+    opacity var(--ease-out);
+}
+
+.workspace-request-tab-close:hover {
+  background-color: rgba(56, 53, 47, 0.1);
+  opacity: 1;
+}
+
+/* 请求编辑器容器：常驻渲染，hidden 时隐藏 */
+.workspace-request-editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.workspace-request-editor[hidden] {
+  display: none;
+}
+
+/* 环境选择：胶囊状占位 */
+.workspace-env {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: 9999px;
+  background-color: var(--c-surface-high);
+  color: var(--color-text-2);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    border-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.workspace-env:hover {
+  border-color: var(--color-neutral-4);
+  color: var(--color-text-1);
+}
+
+.workspace-env-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--c-accent);
+}
+
+.workspace-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  gap: 16px;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 32px;
 }
 
-.project-workspace-name {
+/* === 快捷入口卡片 === */
+
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+
+.workspace-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 200px;
+  padding: 36px 20px 28px;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-large);
+  background-color: var(--color-bg-1);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    box-shadow var(--ease-out),
+    transform var(--ease-out),
+    border-color var(--ease-out);
+}
+
+.workspace-action-card:hover {
+  border-color: var(--color-neutral-4);
+  box-shadow: 0 8px 20px rgba(56, 53, 47, 0.1);
+  transform: translateY(-2px);
+}
+
+.workspace-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 12px;
+  border-radius: var(--border-radius-large);
+  font-size: 26px;
+  transition: transform var(--ease-out);
+}
+
+.workspace-action-card:hover .workspace-action-icon {
+  transform: scale(1.08);
+}
+
+.workspace-action-label {
+  color: var(--color-text-1);
+  font-family: var(--font-serif);
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.workspace-action-desc {
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+
+/* === 占位面板（请求历史等） === */
+
+.workspace-placeholder {
+  gap: 6px;
+  text-align: center;
+}
+
+.workspace-placeholder-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 10px;
+  border-radius: var(--border-radius-large);
+  background-color: var(--c-surface);
+  color: var(--c-ink-tertiary);
+  font-size: 26px;
+}
+
+.workspace-placeholder-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
   color: var(--color-text-1);
 }
 
-.project-workspace-hint {
+.workspace-placeholder-desc {
   margin: 0;
   font-size: 13px;
   color: var(--color-text-3);
+}
+
+/* === 项目设置 === */
+
+.workspace-settings {
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 48px;
+}
+
+.workspace-settings-title {
+  margin: 0 0 24px;
+  font-size: 22px;
+  color: var(--color-text-1);
+}
+
+.workspace-settings-card {
+  width: min(520px, 100%);
+  padding: 24px;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-large);
+  background-color: var(--color-bg-1);
+  box-shadow: var(--shadow-subtle);
+}
+
+.workspace-settings-profile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-neutral-3);
+}
+
+.workspace-settings-name {
+  color: var(--color-text-1);
+  font-family: var(--font-serif);
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.workspace-settings-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 18px 0 0;
+}
+
+.workspace-settings-row {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.workspace-settings-row dt {
+  flex-shrink: 0;
+  width: 72px;
+  color: var(--color-text-3);
+  font-size: 13px;
+}
+
+.workspace-settings-row dd {
+  margin: 0;
+  color: var(--color-text-1);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.workspace-settings-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* === 底部状态栏 === */
+
+.workspace-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 12px;
+  border-top: 1px solid var(--color-neutral-3);
+}
+
+.workspace-statusbar-left,
+.workspace-statusbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-statusbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  color: var(--c-ink-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.workspace-statusbar-btn:hover {
+  background-color: rgba(56, 53, 47, 0.05);
+  color: var(--c-ink-primary);
+}
+
+.workspace-statusbar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+
+.workspace-statusbar-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #00b42a;
 }

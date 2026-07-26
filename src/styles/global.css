@@ -1,7 +1,44 @@
 /**
- * 全局主题：贴近 Arco 默认风格，圆角更柔和。
- * 通过覆盖 Arco CSS 变量生效，组件会自动继承。
+ * 全局主题：Claude Editorial（Warm Rationality / 温暖的理性）
+ * 参考 src/assets/design.md：纸质感、衬线体、低对比度、阅读导向。
+ *
+ * 实现方式：定义 Claude 设计令牌（--c-*），并把 Arco 的浅色主题变量
+ * （--gray-* / --primary-* RGB 三元组、--color-bg-*）整体映射到暖色纸面体系，
+ * Arco 组件（按钮、弹窗、输入框、Message）无需逐个改样式即自动继承。
  */
+
+:root {
+  /* 1. Surfaces（背景层级） */
+  --c-canvas: #faf9f5;
+  --c-surface: #f0eee7;
+  --c-surface-high: #ffffff;
+
+  /* 2. Ink（文字墨色，禁用纯黑） */
+  --c-ink-primary: #38352f;
+  --c-ink-secondary: #736f68;
+  --c-ink-tertiary: #9e9a93;
+
+  /* 3. Brand & Action（焦陶/赤土色） */
+  --c-accent: #cc7c5e;
+  --c-accent-hover: #b56b50;
+  --c-accent-faint: rgba(204, 124, 94, 0.15);
+  --c-focus-ring: rgba(204, 124, 94, 0.25);
+
+  /* 4. Boundaries（沙色边界） */
+  --c-border: #e3e0d6;
+
+  /* Fonts & Shadows（阴影基色用墨色，不用纯黑） */
+  --font-serif: "Newsreader", "Source Han Serif SC", "Songti SC", "STSong", "Noto Serif SC", Georgia, serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --shadow-subtle: 0 1px 2px rgba(56, 53, 47, 0.04);
+  --shadow-float: 0 4px 12px rgba(56, 53, 47, 0.08);
+
+  /* 动效节奏：钝化弹簧感 */
+  --ease-out: 0.3s ease-out;
+}
+
 html,
 body,
 #root {
@@ -21,15 +58,47 @@ html {
 }
 
 body {
-  /* 圆角：在默认 2/4/8 基础上整体加大一档，观感更舒服 */
+  /* 圆角：卡片/容器温润的 12~16px，按钮/输入框 8~12px */
   --border-radius-none: 0;
-  --border-radius-small: 6px;
-  --border-radius-medium: 8px;
-  --border-radius-large: 12px;
+  --border-radius-small: 8px;
+  --border-radius-medium: 10px;
+  --border-radius-large: 14px;
   --border-radius-circle: 50%;
   --window-border-radius: 10px;
 
+  /* === Arco 浅色变量映射：暖灰阶（gray 是 RGB 三元组） === */
+  --gray-1: 245, 243, 236; /* #F5F3EC */
+  --gray-2: 240, 238, 231; /* #F0EEE7 Surface */
+  --gray-3: 227, 224, 214; /* #E3E0D6 Border 沙色 */
+  --gray-4: 211, 207, 194;
+  --gray-5: 189, 184, 170;
+  --gray-6: 158, 154, 147; /* #9E9A93 Ink 三级 */
+  --gray-7: 134, 130, 123;
+  --gray-8: 115, 111, 104; /* #736F68 Ink 次级 */
+  --gray-9: 78, 74, 68;
+  --gray-10: 56, 53, 47; /* #38352F Ink 正文 */
+
+  /* === Arco 品牌色阶：焦陶色（primary 是 RGB 三元组） === */
+  --primary-1: 250, 237, 231;
+  --primary-2: 245, 219, 206;
+  --primary-3: 239, 196, 176;
+  --primary-4: 227, 161, 132;
+  --primary-5: 216, 143, 111;
+  --primary-6: 204, 124, 94; /* #CC7C5E Accent */
+  --primary-7: 181, 107, 80; /* #B56B50 Accent Hover */
+  --primary-8: 156, 90, 66;
+  --primary-9: 130, 74, 53;
+
+  /* === Arco 背景层级：内容区是纸面 Canvas，卡片/弹层是白色高亮层 === */
+  --color-bg-1: var(--c-surface-high);
+  --color-bg-2: var(--c-canvas);
+  --color-bg-3: var(--c-surface-high);
+  --color-bg-4: var(--c-surface-high);
+  --color-bg-5: var(--c-surface-high);
+  --color-mask-bg: rgba(56, 53, 47, 0.42);
+
   color: var(--color-text-1);
+  font-family: var(--font-sans);
   position: relative;
   touch-action: manipulation;
 }
@@ -46,7 +115,48 @@ body {
   border-radius: var(--window-border-radius);
 }
 
-/* 通用滚动条，贴近 Arco 浅色中性色 */
+/* === 字体排印：标题衬线、字重克制在 400、紧凑字距 === */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+
+/* === 灵魂微交互 === */
+
+/* 覆盖原生蓝色高亮：选中文本是淡焦陶底色 */
+::selection {
+  background-color: var(--c-accent-faint);
+  color: var(--c-ink-primary);
+}
+
+/* 输入框光标必须是焦陶色 */
+input,
+textarea {
+  caret-color: var(--c-accent);
+}
+
+/* === Arco 组件级微调（少量、有针对性） === */
+
+/* 模态框：白色独立卡片 + 暖色悬浮阴影，衬托在 Canvas 之上 */
+.arco-modal {
+  background-color: var(--c-surface-high);
+  border-radius: var(--border-radius-large);
+  box-shadow: 0 8px 24px rgba(56, 53, 47, 0.14);
+}
+
+/* 模态框标题：衬线体书卷气 */
+.arco-modal-header .arco-modal-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+/* 通用滚动条，贴近暖色中性色 */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-neutral-4) transparent;

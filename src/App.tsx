@@ -7,6 +7,7 @@ import DeleteProjectModal from "./components/DeleteProjectModal";
 import ProjectWorkspace from "./components/ProjectWorkspace";
 import { usePersistentState } from "./hooks/usePersistentState";
 import { createProject, deleteProject, listProjects, updateProject } from "./lib/projects";
+import { loadSettings } from "./lib/settings";
 import type { CreateProjectInput, Project } from "./types/project";
 import "./App.css";
 
@@ -26,6 +27,15 @@ function App() {
 
   useEffect(() => {
     listProjects().then(setProjects).catch((error) => console.error("加载项目失败:", error));
+  }, []);
+
+  // 设置项「启动时恢复项目」：关闭时启动直接回到主页
+  useEffect(() => {
+    if (!loadSettings().restoreTabs) {
+      setOpenIds([]);
+      setActiveId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 过滤掉项目已被移除后残留的失效标签
@@ -116,7 +126,10 @@ function App() {
         onCloseTab={handleCloseProject}
         onRefresh={() => setContentKey((key) => key + 1)}
       />
-      <main className="app-content" key={contentKey}>
+      <main
+        className={`app-content${activeProject ? " app-content-bare" : ""}`}
+        key={contentKey}
+      >
         {activeProject ? (
           <ProjectWorkspace project={activeProject} />
         ) : (

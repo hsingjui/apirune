@@ -1,0 +1,66 @@
+diff --git a/es/_util/react-dom.js b/es/_util/react-dom.js
+index 8155d849d04f167f1ba559884aa9b474def1fe73..f923cbeead7c334e5fed6fd774152dffdfc83693 100644
+--- a/es/_util/react-dom.js
++++ b/es/_util/react-dom.js
+@@ -93,14 +93,22 @@ export var findDOMNode = function (element, instance) {
+     }
+     return null;
+ };
+-// 回调children的原始 ref ，适配函数 ref or ref.current 场景
++// 回调 children 的原始 ref ，适配函数 ref or ref.current 场景
++// React 19 起 ref 是普通 prop，访问 element.ref 会触发弃用警告，优先读 props.ref；
++// 仅当 props.ref 为 undefined（React 18 或无 ref）时回退到 element.ref，无 ref 时为 null 不会触发警告
+ export var callbackOriginRef = function (children, node) {
+-    if (children && children.ref) {
+-        if (isFunction(children.ref)) {
+-            children === null || children === void 0 ? void 0 : children.ref(node);
++    if (children) {
++        var ref = children.props ? children.props.ref : undefined;
++        if (ref === undefined) {
++            ref = children.ref;
+         }
+-        if ('current' in children.ref) {
+-            children.ref.current = node;
++        if (ref) {
++            if (isFunction(ref)) {
++                ref(node);
++            }
++            if ('current' in ref) {
++                ref.current = node;
++            }
+         }
+     }
+ };
+diff --git a/lib/_util/react-dom.js b/lib/_util/react-dom.js
+index 994deffb8f90ef071501488ec60d14e953b2999f..e1a7202f5f8fd63ab57a33be84a74801f1d6aec7 100644
+--- a/lib/_util/react-dom.js
++++ b/lib/_util/react-dom.js
+@@ -100,14 +100,22 @@ var findDOMNode = function (element, instance) {
+     return null;
+ };
+ exports.findDOMNode = findDOMNode;
+-// 回调children的原始 ref ，适配函数 ref or ref.current 场景
++// 回调 children 的原始 ref ，适配函数 ref or ref.current 场景
++// React 19 起 ref 是普通 prop，访问 element.ref 会触发弃用警告，优先读 props.ref；
++// 仅当 props.ref 为 undefined（React 18 或无 ref）时回退到 element.ref，无 ref 时为 null 不会触发警告
+ var callbackOriginRef = function (children, node) {
+-    if (children && children.ref) {
+-        if ((0, is_1.isFunction)(children.ref)) {
+-            children === null || children === void 0 ? void 0 : children.ref(node);
++    if (children) {
++        var ref = children.props ? children.props.ref : undefined;
++        if (ref === undefined) {
++            ref = children.ref;
+         }
+-        if ('current' in children.ref) {
+-            children.ref.current = node;
++        if (ref) {
++            if ((0, is_1.isFunction)(ref)) {
++                ref(node);
++            }
++            if ('current' in ref) {
++                ref.current = node;
++            }
+         }
+     }
+ };

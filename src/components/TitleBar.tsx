@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Modal } from "@arco-design/web-react";
 import { IconClose, IconHome, IconRefresh, IconSettings } from "@arco-design/web-react/icon";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEscClose } from "../hooks/useEscClose";
 import type { Project } from "../types/project";
 import ProjectIcon from "./ProjectIcon";
+import SettingsModal from "./SettingsModal";
 import "./TitleBar.css";
 
 interface TitleBarProps {
@@ -138,14 +138,7 @@ function TitleBar({ tabs, activeId, onSelectTab, onCloseTab, onRefresh }: TitleB
         </button>
       </div>
 
-      <Modal
-        title="设置"
-        visible={settingsVisible}
-        onOk={() => setSettingsVisible(false)}
-        onCancel={() => setSettingsVisible(false)}
-      >
-        <p>设置内容待补充</p>
-      </Modal>
+      <SettingsModal visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
     </header>
   );
 }

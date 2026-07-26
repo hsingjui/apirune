@@ -1,6 +1,7 @@
 import Database from "@tauri-apps/plugin-sql";
 import type { CreateProjectInput, Project } from "../types/project";
 import { createId } from "../utils/id";
+import { deleteProjectData } from "./requests";
 
 /**
  * SQLite 连接字符串。路径相对于 `tauri::path::BaseDirectory::AppConfig`，
@@ -89,11 +90,12 @@ export async function updateProject(
   return updated;
 }
 
-/** 删除项目。项目不存在时抛错 */
+/** 删除项目，并级联清理其下的目录与请求。项目不存在时抛错 */
 export async function deleteProject(id: string): Promise<void> {
   const db = await getDb();
   const result = await db.execute("DELETE FROM projects WHERE id = $1", [id]);
   if (result.rowsAffected === 0) {
     throw new Error(`项目不存在: ${id}`);
   }
+  await deleteProjectData(id);
 }

@@ -1,4 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod http;
+
 use tauri::{Manager, PhysicalPosition, PhysicalSize};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
@@ -45,8 +47,8 @@ pub fn run() {
                     "sqlite:apirune.db",
                     vec![Migration {
                         version: 1,
-                        description: "create_projects_table",
-                        sql: "CREATE TABLE IF NOT EXISTS projects (\n                          id          TEXT    PRIMARY KEY,\n                          name        TEXT    NOT NULL,\n                          icon        TEXT    NOT NULL,\n                          created_at  INTEGER NOT NULL,\n                          updated_at  INTEGER NOT NULL\n                        );",
+                        description: "create_tables",
+                        sql: "CREATE TABLE IF NOT EXISTS projects (\n                          id          TEXT    PRIMARY KEY,\n                          name        TEXT    NOT NULL,\n                          icon        TEXT    NOT NULL,\n                          created_at  INTEGER NOT NULL,\n                          updated_at  INTEGER NOT NULL\n                        );\n                        CREATE TABLE IF NOT EXISTS folders (\n                          id          TEXT    PRIMARY KEY,\n                          project_id  TEXT    NOT NULL,\n                          parent_id   TEXT,\n                          name        TEXT    NOT NULL,\n                          sort_order  INTEGER NOT NULL DEFAULT 0,\n                          created_at  INTEGER NOT NULL,\n                          updated_at  INTEGER NOT NULL\n                        );\n                        CREATE TABLE IF NOT EXISTS requests (\n                          id          TEXT    PRIMARY KEY,\n                          project_id  TEXT    NOT NULL,\n                          folder_id   TEXT,\n                          name        TEXT    NOT NULL,\n                          method      TEXT    NOT NULL DEFAULT 'GET',\n                          url         TEXT    NOT NULL DEFAULT '',\n                          params      TEXT    NOT NULL DEFAULT '[]',\n                          headers     TEXT    NOT NULL DEFAULT '[]',\n                          body_type   TEXT    NOT NULL DEFAULT 'none',\n                          body        TEXT    NOT NULL DEFAULT '',\n                          sort_order  INTEGER NOT NULL DEFAULT 0,\n                          created_at  INTEGER NOT NULL,\n                          updated_at  INTEGER NOT NULL\n                        );\n                        CREATE TABLE IF NOT EXISTS history (\n                          id               TEXT    PRIMARY KEY,\n                          project_id       TEXT    NOT NULL,\n                          request_id       TEXT,\n                          method           TEXT    NOT NULL,\n                          url              TEXT    NOT NULL,\n                          params           TEXT    NOT NULL DEFAULT '[]',\n                          headers          TEXT    NOT NULL DEFAULT '[]',\n                          body_type        TEXT    NOT NULL DEFAULT 'none',\n                          body             TEXT    NOT NULL DEFAULT '',\n                          status           INTEGER,\n                          duration_ms      INTEGER,\n                          response_headers TEXT    NOT NULL DEFAULT '{}',\n                          response_body    TEXT    NOT NULL DEFAULT '',\n                          error            TEXT,\n                          created_at       INTEGER NOT NULL\n                        );\n                        CREATE INDEX IF NOT EXISTS idx_folders_project ON folders (project_id);\n                        CREATE INDEX IF NOT EXISTS idx_requests_project ON requests (project_id);\n                        CREATE INDEX IF NOT EXISTS idx_requests_folder ON requests (folder_id);\n                        CREATE INDEX IF NOT EXISTS idx_history_project ON history (project_id, created_at);",
                         kind: MigrationKind::Up,
                     }],
                 )
@@ -58,7 +60,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![greet, http::send_http_request])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

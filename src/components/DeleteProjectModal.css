@@ -26,8 +26,8 @@
   cursor: pointer;
   user-select: all;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--ease-out),
+    color var(--ease-out);
 }
 
 .delete-project-name:hover {

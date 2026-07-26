@@ -34,9 +34,9 @@
   background-color: var(--color-bg-1);
   cursor: pointer;
   transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--ease-out),
+    background-color var(--ease-out),
+    box-shadow var(--ease-out);
 }
 
 .create-project-icon:hover {
@@ -83,8 +83,8 @@
   color: var(--color-text-1);
   cursor: pointer;
   transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
+    border-color var(--ease-out),
+    background-color var(--ease-out);
 }
 
 .create-project-pagination-btn:hover:not(:disabled) {

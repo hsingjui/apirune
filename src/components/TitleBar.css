@@ -1,7 +1,7 @@
 :root {
   --titlebar-height: 40px;
   --titlebar-item-height: 28px;
-  --titlebar-color: #364052;
+  --titlebar-color: var(--c-ink-secondary);
   --traffic-light-size: 12px;
 }
 
@@ -151,16 +151,17 @@
   white-space: nowrap;
   cursor: pointer;
   flex-shrink: 0;
+  transition: background-color var(--ease-out);
 }
 
 .titlebar-tab:hover {
-  background-color: rgba(54, 64, 82, 0.08);
+  background-color: rgba(56, 53, 47, 0.06);
 }
 
 .titlebar-tab-active,
 .titlebar-tab-active:hover {
   background-color: var(--color-bg-2);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-subtle);
 }
 
 .titlebar-tab-name {
@@ -185,7 +186,7 @@
 }
 
 .titlebar-tab-close:hover {
-  background-color: rgba(54, 64, 82, 0.16);
+  background-color: rgba(56, 53, 47, 0.12);
 }
 
 .titlebar-tab-close .arco-icon {
@@ -214,10 +215,11 @@
   color: var(--titlebar-color);
   cursor: pointer;
   line-height: 0;
+  transition: background-color var(--ease-out);
 }
 
 .titlebar-btn:hover {
-  background-color: rgba(54, 64, 82, 0.08);
+  background-color: rgba(56, 53, 47, 0.06);
 }
 
 .titlebar-btn .arco-icon {
