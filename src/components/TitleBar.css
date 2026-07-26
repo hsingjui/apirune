@@ -1,0 +1,240 @@
+:root {
+  --titlebar-height: 40px;
+  --titlebar-item-height: 28px;
+  --titlebar-color: #364052;
+  --traffic-light-size: 12px;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: var(--titlebar-height);
+  padding: 0 12px;
+  -webkit-app-region: drag;
+  app-region: drag;
+  user-select: none;
+}
+
+.titlebar-left,
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  height: var(--titlebar-item-height);
+}
+
+.titlebar-left {
+  gap: 14px;
+  min-width: 0;
+}
+
+.traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--titlebar-item-height);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.traffic-light {
+  width: var(--traffic-light-size);
+  height: var(--traffic-light-size);
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: default;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.traffic-light-close {
+  background-color: #ff5f57;
+}
+
+.traffic-light-minimize {
+  background-color: #febc2e;
+}
+
+.traffic-light-maximize {
+  background-color: #28c840;
+}
+
+.traffic-lights:hover .traffic-light-close::before,
+.traffic-lights:hover .traffic-light-close::after,
+.traffic-lights:hover .traffic-light-minimize::before,
+.traffic-lights:hover .traffic-light-maximize::before,
+.traffic-lights:hover .traffic-light-maximize::after {
+  content: "";
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.traffic-lights:hover .traffic-light-close::before,
+.traffic-lights:hover .traffic-light-close::after {
+  width: 8px;
+  height: 1px;
+  top: 50%;
+  left: 50%;
+}
+
+.traffic-lights:hover .traffic-light-close::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.traffic-lights:hover .traffic-light-close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.traffic-lights:hover .traffic-light-minimize::before {
+  width: 8px;
+  height: 1px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.traffic-lights:hover .traffic-light-maximize::before {
+  width: 6px;
+  height: 6px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: 1px;
+  box-sizing: border-box;
+}
+
+.titlebar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--titlebar-item-height);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.titlebar-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.titlebar-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background-color: var(--color-neutral-3);
+  flex-shrink: 0;
+}
+
+.titlebar-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 180px;
+  height: var(--titlebar-item-height);
+  margin: 0;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--titlebar-color);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.titlebar-tab:hover {
+  background-color: rgba(54, 64, 82, 0.08);
+}
+
+.titlebar-tab-active,
+.titlebar-tab-active:hover {
+  background-color: var(--color-bg-2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.titlebar-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.titlebar-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 -4px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--titlebar-color);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.titlebar-tab-close:hover {
+  background-color: rgba(54, 64, 82, 0.16);
+}
+
+.titlebar-tab-close .arco-icon {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+}
+
+.titlebar-actions {
+  gap: 4px;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.titlebar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--titlebar-item-height);
+  height: var(--titlebar-item-height);
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--titlebar-color);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.titlebar-btn:hover {
+  background-color: rgba(54, 64, 82, 0.08);
+}
+
+.titlebar-btn .arco-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.titlebar-btn-refreshing .arco-icon {
+  animation: titlebar-spin 0.6s linear;
+}
+
+@keyframes titlebar-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

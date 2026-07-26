@@ -1,0 +1,108 @@
+import {
+  IconApps,
+  IconBook,
+  IconBranch,
+  IconBug,
+  IconBulb,
+  IconCamera,
+  IconCloud,
+  IconCode,
+  IconCommand,
+  IconCompass,
+  IconDashboard,
+  IconDesktop,
+  IconExperiment,
+  IconFire,
+  IconFolder,
+  IconGift,
+  IconHeart,
+  IconHistory,
+  IconHome,
+  IconLaunch,
+  IconLink,
+  IconLock,
+  IconMessage,
+  IconMindMapping,
+  IconMobile,
+  IconMoon,
+  IconMusic,
+  IconNotification,
+  IconPalette,
+  IconPen,
+  IconPublic,
+  IconRobot,
+  IconSearch,
+  IconSettings,
+  IconShareAlt,
+  IconStar,
+  IconStorage,
+  IconSun,
+  IconSync,
+  IconTag,
+  IconThunderbolt,
+  IconTool,
+  IconTrophy,
+  IconUser,
+} from "@arco-design/web-react/icon";
+import type { ComponentType } from "react";
+
+export interface ProjectIconEntry {
+  key: string;
+  label: string;
+  color: string;
+  Icon: ComponentType<{ style?: React.CSSProperties }>;
+}
+
+/** 新建项目时可选的内置图标，颜色取自 Arco 色板 */
+export const PROJECT_ICONS: ProjectIconEntry[] = [
+  { key: "code", label: "代码", color: "#165dff", Icon: IconCode },
+  { key: "cloud", label: "云服务", color: "#0fc6c2", Icon: IconCloud },
+  { key: "experiment", label: "实验", color: "#722ed1", Icon: IconExperiment },
+  { key: "bug", label: "调试", color: "#f53f3f", Icon: IconBug },
+  { key: "fire", label: "热门", color: "#f77234", Icon: IconFire },
+  { key: "thunderbolt", label: "闪电", color: "#f7ba1e", Icon: IconThunderbolt },
+  { key: "compass", label: "探索", color: "#3491fa", Icon: IconCompass },
+  { key: "launch", label: "启动", color: "#00b42a", Icon: IconLaunch },
+  { key: "star", label: "收藏", color: "#ffb400", Icon: IconStar },
+  { key: "heart", label: "喜欢", color: "#eb2f96", Icon: IconHeart },
+  { key: "bulb", label: "灵感", color: "#ff7d00", Icon: IconBulb },
+  { key: "book", label: "文档", color: "#14c9c9", Icon: IconBook },
+  { key: "palette", label: "设计", color: "#b71de8", Icon: IconPalette },
+  { key: "robot", label: "智能", color: "#165dff", Icon: IconRobot },
+  { key: "music", label: "音乐", color: "#eb2f96", Icon: IconMusic },
+  { key: "camera", label: "影像", color: "#364052", Icon: IconCamera },
+  { key: "trophy", label: "成就", color: "#f7ba1e", Icon: IconTrophy },
+  { key: "gift", label: "礼物", color: "#f53f3f", Icon: IconGift },
+  { key: "apps", label: "应用", color: "#00b42a", Icon: IconApps },
+  { key: "desktop", label: "桌面", color: "#3491fa", Icon: IconDesktop },
+  { key: "storage", label: "存储", color: "#722ed1", Icon: IconStorage },
+  { key: "command", label: "命令", color: "#364052", Icon: IconCommand },
+  { key: "tool", label: "工具", color: "#f77234", Icon: IconTool },
+  { key: "moon", label: "夜间", color: "#572ab1", Icon: IconMoon },
+  { key: "branch", label: "分支", color: "#00b42a", Icon: IconBranch },
+  { key: "dashboard", label: "仪表盘", color: "#165dff", Icon: IconDashboard },
+  { key: "folder", label: "文件夹", color: "#f77234", Icon: IconFolder },
+  { key: "home", label: "主页", color: "#f53f3f", Icon: IconHome },
+  { key: "lock", label: "私密", color: "#722ed1", Icon: IconLock },
+  { key: "link", label: "链接", color: "#3491fa", Icon: IconLink },
+  { key: "message", label: "消息", color: "#0fc6c2", Icon: IconMessage },
+  { key: "mindMapping", label: "思维", color: "#b71de8", Icon: IconMindMapping },
+  { key: "mobile", label: "移动", color: "#3491fa", Icon: IconMobile },
+  { key: "notification", label: "通知", color: "#ff7d00", Icon: IconNotification },
+  { key: "pen", label: "编辑", color: "#eb2f96", Icon: IconPen },
+  { key: "public", label: "全球", color: "#14c9c9", Icon: IconPublic },
+  { key: "search", label: "搜索", color: "#165dff", Icon: IconSearch },
+  { key: "settings", label: "设置", color: "#4e5969", Icon: IconSettings },
+  { key: "shareAlt", label: "分享", color: "#00b42a", Icon: IconShareAlt },
+  { key: "sync", label: "同步", color: "#0fc6c2", Icon: IconSync },
+  { key: "tag", label: "标签", color: "#f7ba1e", Icon: IconTag },
+  { key: "sun", label: "白天", color: "#f7ba1e", Icon: IconSun },
+  { key: "user", label: "团队", color: "#572ab1", Icon: IconUser },
+  { key: "history", label: "历史", color: "#86909c", Icon: IconHistory },
+];
+
+export const DEFAULT_PROJECT_ICON = PROJECT_ICONS[0];
+
+export function getProjectIcon(key: string): ProjectIconEntry {
+  return PROJECT_ICONS.find((entry) => entry.key === key) ?? DEFAULT_PROJECT_ICON;
+}

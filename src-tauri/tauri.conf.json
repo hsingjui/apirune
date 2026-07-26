@@ -10,15 +10,21 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
         "title": "apirune",
         "width": 1280,
-        "height": 860,
-        "minWidth": 1024,
-        "minHeight": 680,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 520,
         "center": true,
-        "resizable": true
+        "preventOverflow": true,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "shadow": true
       }
     ],
     "security": {

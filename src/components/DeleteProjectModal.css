@@ -1,0 +1,36 @@
+.delete-project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.delete-project-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-2);
+  line-height: 1.6;
+}
+
+.delete-project-hint b {
+  color: var(--color-text-1);
+}
+
+.delete-project-name {
+  display: inline-block;
+  margin: 0 4px;
+  padding: 1px 6px;
+  border-radius: var(--border-radius-small);
+  background-color: var(--color-fill-2);
+  color: var(--color-text-1);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: all;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.delete-project-name:hover {
+  background-color: rgb(var(--primary-1));
+  color: rgb(var(--primary-6));
+}
