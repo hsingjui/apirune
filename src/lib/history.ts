@@ -1,9 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
-import type {
-  AddHistoryInput,
-  HistoryEntry,
-  HistoryEntrySummary,
-} from "../types/history";
+import type { AddHistoryInput, HistoryEntry, HistoryEntrySummary } from "../types/history";
 import type { BodyType, HttpMethod, KeyValueItem } from "../types/request";
 import { createId } from "../utils/id";
 
@@ -28,13 +24,20 @@ type HistoryRow = {
   duration_ms: number | null;
   response_headers: string;
   response_body: string;
+  response_body_encoding: string;
   error: string | null;
   created_at: number;
 };
 
 type HistorySummaryRow = Omit<
   HistoryRow,
-  "params" | "headers" | "body_type" | "body" | "response_headers" | "response_body"
+  | "params"
+  | "headers"
+  | "body_type"
+  | "body"
+  | "response_headers"
+  | "response_body"
+  | "response_body_encoding"
 >;
 
 function parseJson<T>(json: string, fallback: T): T {
@@ -68,6 +71,7 @@ function toEntry(row: HistoryRow): HistoryEntry {
     body: row.body,
     responseHeaders: parseJson<Record<string, string>>(row.response_headers, {}),
     responseBody: row.response_body,
+    responseBodyEncoding: row.response_body_encoding === "base64" ? "base64" : "text",
   };
 }
 
@@ -85,13 +89,20 @@ export async function listHistory(
   return rows.map(toSummary);
 }
 
+/** 统计某时间点之后的发送次数（跨项目），用于主页问候区 */
+export async function countHistorySince(since: number): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ count: number }[]>(
+    "SELECT COUNT(*) AS count FROM history WHERE created_at >= $1",
+    [since],
+  );
+  return rows[0]?.count ?? 0;
+}
+
 /** 按 id 查完整历史详情，不存在返回 null */
 export async function getHistoryEntry(id: string): Promise<HistoryEntry | null> {
   const db = await getDb();
-  const rows = await db.select<HistoryRow[]>(
-    "SELECT * FROM history WHERE id = $1",
-    [id],
-  );
+  const rows = await db.select<HistoryRow[]>("SELECT * FROM history WHERE id = $1", [id]);
   return rows.length > 0 ? toEntry(rows[0]) : null;
 }
 
@@ -104,7 +115,7 @@ export async function addHistory(input: AddHistoryInput): Promise<HistoryEntry> 
   };
   const db = await getDb();
   await db.execute(
-    "INSERT INTO history (id, project_id, request_id, method, url, params, headers, body_type, body, status, duration_ms, response_headers, response_body, error, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
+    "INSERT INTO history (id, project_id, request_id, method, url, params, headers, body_type, body, status, duration_ms, response_headers, response_body, response_body_encoding, error, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)",
     [
       entry.id,
       entry.projectId,
@@ -119,6 +130,7 @@ export async function addHistory(input: AddHistoryInput): Promise<HistoryEntry> 
       entry.durationMs,
       JSON.stringify(entry.responseHeaders),
       entry.responseBody,
+      entry.responseBodyEncoding,
       entry.error,
       entry.createdAt,
     ],
@@ -133,6 +145,20 @@ export async function deleteHistoryEntry(id: string): Promise<void> {
   if (result.rowsAffected === 0) {
     throw new Error(`历史记录不存在: ${id}`);
   }
+}
+
+/** 删除项目下某时间范围内的历史（[start, end)），返回删除条数 */
+export async function deleteHistoryByRange(
+  projectId: string,
+  start: number,
+  end: number,
+): Promise<number> {
+  const db = await getDb();
+  const result = await db.execute(
+    "DELETE FROM history WHERE project_id = $1 AND created_at >= $2 AND created_at < $3",
+    [projectId, start, end],
+  );
+  return result.rowsAffected;
 }
 
 /** 清空项目下的全部历史 */

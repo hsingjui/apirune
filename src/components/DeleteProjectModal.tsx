@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
-import { Input, Message, Modal } from "@arco-design/web-react";
-import { useEscClose } from "../hooks/useEscClose";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useI18n } from "../i18n";
 import type { Project } from "../types/project";
 import "./DeleteProjectModal.css";
 
@@ -12,9 +21,8 @@ interface DeleteProjectModalProps {
 }
 
 function DeleteProjectModal({ visible, project, onCancel, onConfirm }: DeleteProjectModalProps) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
-
-  useEscClose(visible, onCancel);
 
   // 每次打开时清空输入，确保需重新确认
   useEffect(() => {
@@ -32,52 +40,56 @@ function DeleteProjectModal({ visible, project, onCancel, onConfirm }: DeletePro
   const copyName = () => {
     if (!project) return;
     void navigator.clipboard.writeText(project.name).then(
-      () => Message.success("已复制项目名称"),
-      () => Message.error("复制失败"),
+      () => toast.success(t("deleteProject.nameCopied")),
+      () => toast.error(t("deleteProject.copyFailed")),
     );
   };
 
   return (
-    <Modal
-      title="删除项目"
-      visible={visible}
-      okText="删除"
-      cancelText="取消"
-      okButtonProps={{ status: "danger", disabled: !canConfirm }}
-      onOk={handleConfirm}
-      onCancel={onCancel}
-      autoFocus={false}
-      style={{ width: 440 }}
-    >
-      <div className="delete-project-form">
-        <p className="delete-project-hint">
-          此操作不可恢复。请输入项目名称
-          <b
-            className="delete-project-name"
-            title="点击复制"
-            role="button"
-            tabIndex={0}
-            onClick={copyName}
+    <Dialog open={visible} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent
+        className="sm:max-w-[440px]"
+        showCloseButton={false}
+        aria-describedby={undefined}
+      >
+        <DialogHeader>
+          <DialogTitle>{t("deleteProject.title")}</DialogTitle>
+        </DialogHeader>
+
+        <div className="delete-project-form">
+          <p className="delete-project-hint">
+            {t("deleteProject.hintPrefix")}
+            <button
+              type="button"
+              className="delete-project-name"
+              title={t("deleteProject.copyTitle")}
+              onClick={copyName}
+            >
+              {project?.name}
+            </button>
+            {t("deleteProject.hintSuffix")}
+          </p>
+          <Input
+            placeholder={t("deleteProject.inputPlaceholder")}
+            value={value}
+            autoFocus
+            onChange={(event) => setValue(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                copyName();
-              }
+              if (event.key === "Enter") handleConfirm();
             }}
-          >
-            {project?.name}
-          </b>
-          以确认删除。
-        </p>
-        <Input
-          placeholder="输入项目名称确认"
-          value={value}
-          autoFocus
-          onChange={setValue}
-          onPressEnter={handleConfirm}
-        />
-      </div>
-    </Modal>
+          />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="destructive" disabled={!canConfirm} onClick={handleConfirm}>
+            {t("common.delete")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

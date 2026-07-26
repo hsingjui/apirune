@@ -1,0 +1,271 @@
+/* === 生成代码弹窗：左侧语言列表 + 右侧变体 Tab 与代码卡片 === */
+
+.codegen-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-neutral-3);
+}
+
+.codegen-body {
+  display: flex;
+  height: 500px;
+  min-height: 0;
+}
+
+/* --- 左侧语言列表 --- */
+
+.codegen-langs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  width: 148px;
+  padding: 12px 8px;
+  border-right: 1px solid var(--color-neutral-3);
+  overflow-y: auto;
+}
+
+.codegen-lang {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--border-radius-medium);
+  background: transparent;
+  color: var(--color-text-1);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.codegen-lang:hover {
+  background-color: rgba(56, 53, 47, 0.05);
+}
+
+.codegen-lang-active,
+.codegen-lang-active:hover {
+  background-color: rgba(56, 53, 47, 0.08);
+  font-weight: 600;
+}
+
+/* 语言小图标徽标 */
+.codegen-lang-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.codegen-icon-shell {
+  background-color: #24292f;
+  color: #3fb950;
+}
+
+.codegen-icon-js {
+  background-color: #f7df1e;
+  color: #24292f;
+}
+
+.codegen-icon-java {
+  background-color: #e76f00;
+  color: #ffffff;
+}
+
+.codegen-icon-go {
+  background-color: #00add8;
+  color: #ffffff;
+}
+
+.codegen-icon-c {
+  background-color: #03599c;
+  color: #ffffff;
+}
+
+.codegen-icon-python {
+  background-color: #3776ab;
+  color: #ffd43b;
+}
+
+/* --- 右侧代码区 --- */
+
+.codegen-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  padding: 16px 20px 20px;
+}
+
+.codegen-lang-title {
+  margin: 0 0 12px;
+  color: var(--color-text-1);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* 代码卡片：变体 Tab + 操作按钮 + 代码 */
+.codegen-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--color-bg-1);
+  overflow: hidden;
+}
+
+.codegen-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-neutral-3);
+}
+
+.codegen-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background-color: rgba(56, 53, 47, 0.05);
+}
+
+.codegen-tab {
+  padding: 4px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--c-ink-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.codegen-tab:hover {
+  color: var(--c-ink-primary);
+}
+
+.codegen-tab-active,
+.codegen-tab-active:hover {
+  border-color: var(--color-neutral-3);
+  background-color: var(--color-bg-1);
+  color: var(--c-ink-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.codegen-copy {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--color-bg-1);
+  color: var(--c-ink-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.codegen-copy:hover {
+  color: var(--c-ink-primary);
+  background-color: rgba(56, 53, 47, 0.05);
+}
+
+.codegen-copy svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 代码区容器：承载浮动复制按钮 */
+.codegen-code-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.codegen-code {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 12px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.codegen-line {
+  display: flex;
+}
+
+.codegen-line-no {
+  flex-shrink: 0;
+  width: 40px;
+  padding-right: 14px;
+  color: var(--color-text-3);
+  text-align: right;
+  user-select: none;
+}
+
+.codegen-line-text {
+  flex: 1;
+  min-width: 0;
+  padding-right: 16px;
+  color: var(--color-text-1);
+  /* 长行软换行，续行自动悬挂对齐到行号右侧 */
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 语法高亮：复用主题的 --json-* 令牌，随浅深主题自动切换 */
+.codegen-tok-keyword {
+  color: var(--json-key);
+  font-weight: 600;
+}
+
+.codegen-tok-string {
+  color: var(--json-string);
+}
+
+.codegen-tok-number {
+  color: var(--json-number);
+}
+
+.codegen-tok-flag {
+  color: var(--json-bool);
+}
+
+.codegen-tok-comment {
+  color: var(--json-null);
+  font-style: italic;
+}

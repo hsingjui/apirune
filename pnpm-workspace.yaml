@@ -1,5 +1,2 @@
 onlyBuiltDependencies:
   - esbuild
-
-patchedDependencies:
-  '@arco-design/web-react@2.66.16': patches/@arco-design__web-react@2.66.16.patch

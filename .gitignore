@@ -60,6 +60,7 @@ coverage
 .cache
 tmp
 temp
+layout-test.html
 
 # Tauri / Rust (also covered by src-tauri/.gitignore)
 src-tauri/target

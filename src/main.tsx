@@ -1,17 +1,24 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { ConfigProvider } from "@arco-design/web-react";
-// Arco 命令式组件（Notification/Message）在 React 19 下需要此适配器注册 createRoot，
-// 否则内部回退到已移除的 ReactDOM.render 而报错。需在任何 Arco 命令式调用前执行。
-import "@arco-design/web-react/es/_util/react-19-adapter.js";
-import "@arco-design/web-react/dist/css/arco.css";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { setupContextMenu } from "./lib/context-menu";
+import { loadSettings } from "./lib/settings";
+import { applyAppearance } from "./lib/themes";
 import "./styles/global.css";
 import App from "./App";
 
+// 渲染前先应用主题与字体，避免启动闪烁
+applyAppearance(loadSettings());
+
+// 禁用 WebView 原生右键菜单
+setupContextMenu();
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <ConfigProvider>
+    <TooltipProvider delayDuration={300}>
       <App />
-    </ConfigProvider>
+      <Toaster position="top-center" />
+    </TooltipProvider>
   </React.StrictMode>,
 );

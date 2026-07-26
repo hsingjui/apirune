@@ -1,8 +1,17 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Input, Modal, Tooltip } from "@arco-design/web-react";
-import { IconLeft, IconRight } from "@arco-design/web-react/icon";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PROJECT_ICONS } from "../constants/projectIcons";
-import { useEscClose } from "../hooks/useEscClose";
+import { useI18n } from "../i18n";
 import type { CreateProjectInput, Project } from "../types/project";
 import "./CreateProjectModal.css";
 
@@ -25,12 +34,11 @@ function CreateProjectModal({
   editingProject,
   onEdit,
 }: CreateProjectModalProps) {
+  const { t } = useI18n();
   const editing = Boolean(editingProject);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState(PROJECT_ICONS[0].key);
   const [iconPage, setIconPage] = useState(0);
-
-  useEscClose(visible, onCancel);
 
   // 每次打开时重置表单：编辑模式回填当前项目，创建模式清空
   useEffect(() => {
@@ -65,85 +73,109 @@ function CreateProjectModal({
   const pageIcons = PROJECT_ICONS.slice(pageStart, pageStart + ICON_PAGE_SIZE);
 
   return (
-    <Modal
-      title={editing ? "编辑项目" : "新建项目"}
-      visible={visible}
-      okText={editing ? "保存" : "创建"}
-      cancelText="取消"
-      okButtonProps={{ disabled: !canSubmit }}
-      onOk={handleSubmit}
-      onCancel={onCancel}
-      autoFocus={false}
-      style={{ width: 480 }}
-    >
-      <div className="create-project-form">
-        <div className="create-project-field">
-          <label className="create-project-label" htmlFor="create-project-name">
-            项目名称
-          </label>
-          <Input
-            id="create-project-name"
-            placeholder="给项目起个名字"
-            value={name}
-            maxLength={MAX_NAME_LENGTH}
-            showWordLimit
-            autoFocus
-            onChange={setName}
-            onPressEnter={handleSubmit}
-          />
-        </div>
+    <Dialog open={visible} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent
+        className="sm:max-w-[480px]"
+        showCloseButton={false}
+        aria-describedby={undefined}
+      >
+        <DialogHeader>
+          <DialogTitle>
+            {editing ? t("createProject.editTitle") : t("createProject.title")}
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="create-project-field">
-          <span className="create-project-label">项目图标</span>
-          <div className="create-project-icons-wrap">
-            <div className="create-project-icons" role="radiogroup" aria-label="项目图标">
-              {pageIcons.map((entry) => {
-                const { Icon } = entry;
-                const selected = entry.key === icon;
-                return (
-                  <Tooltip key={entry.key} content={entry.label}>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      className={`create-project-icon${selected ? " create-project-icon-selected" : ""}`}
-                      onClick={() => setIcon(entry.key)}
-                    >
-                      <Icon style={{ fontSize: 18, color: entry.color }} />
-                    </button>
-                  </Tooltip>
-                );
-              })}
+        <div className="create-project-form">
+          <div className="create-project-field">
+            <label className="create-project-label" htmlFor="create-project-name">
+              {t("createProject.nameLabel")}
+            </label>
+            <div className="create-project-input-wrap">
+              <Input
+                id="create-project-name"
+                placeholder={t("createProject.namePlaceholder")}
+                value={name}
+                maxLength={MAX_NAME_LENGTH}
+                autoFocus
+                onChange={(event) => setName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleSubmit();
+                }}
+              />
+              <span className="create-project-count" aria-hidden="true">
+                {name.length}/{MAX_NAME_LENGTH}
+              </span>
             </div>
-            <div className="create-project-pagination">
-              <div className="create-project-pagination-controls">
-                <button
-                  type="button"
-                  className="create-project-pagination-btn"
-                  disabled={iconPage === 0}
-                  onClick={() => setIconPage((p) => Math.max(0, p - 1))}
-                  aria-label="上一页"
-                >
-                  <IconLeft />
-                </button>
-                <span className="create-project-pagination-text">
-                  {iconPage + 1} / {totalIconPages}
-                </span>
-                <button
-                  type="button"
-                  className="create-project-pagination-btn"
-                  disabled={iconPage === totalIconPages - 1}
-                  onClick={() => setIconPage((p) => Math.min(totalIconPages - 1, p + 1))}
-                  aria-label="下一页"
-                >
-                  <IconRight />
-                </button>
+          </div>
+
+          <div className="create-project-field">
+            <span className="create-project-label">{t("createProject.iconLabel")}</span>
+            <div className="create-project-icons-wrap">
+              <div
+                className="create-project-icons"
+                role="radiogroup"
+                aria-label={t("createProject.iconLabel")}
+              >
+                {pageIcons.map((entry) => {
+                  const { Icon } = entry;
+                  const selected = entry.key === icon;
+                  return (
+                    <Tooltip key={entry.key}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          className={`create-project-icon${selected ? " create-project-icon-selected" : ""}`}
+                          onClick={() => setIcon(entry.key)}
+                        >
+                          <Icon style={{ fontSize: 18, color: entry.color }} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t(`icon.${entry.key}`)}</TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+              <div className="create-project-pagination">
+                <div className="create-project-pagination-controls">
+                  <button
+                    type="button"
+                    className="create-project-pagination-btn"
+                    disabled={iconPage === 0}
+                    onClick={() => setIconPage((p) => Math.max(0, p - 1))}
+                    aria-label={t("createProject.prevPage")}
+                  >
+                    <ChevronLeft />
+                  </button>
+                  <span className="create-project-pagination-text">
+                    {iconPage + 1} / {totalIconPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="create-project-pagination-btn"
+                    disabled={iconPage === totalIconPages - 1}
+                    onClick={() => setIconPage((p) => Math.min(totalIconPages - 1, p + 1))}
+                    aria-label={t("createProject.nextPage")}
+                  >
+                    <ChevronRight />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </Modal>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+          <Button disabled={!canSubmit} onClick={handleSubmit}>
+            {editing ? t("common.save") : t("common.create")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

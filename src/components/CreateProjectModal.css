@@ -16,6 +16,25 @@
   color: var(--color-text-1);
 }
 
+/* 输入框右侧内嵌字数提示（替代原 Arco showWordLimit） */
+.create-project-input-wrap {
+  position: relative;
+}
+
+.create-project-input-wrap input {
+  padding-right: 56px;
+}
+
+.create-project-count {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--color-text-3);
+  pointer-events: none;
+}
+
 .create-project-icons {
   display: grid;
   grid-template-columns: repeat(8, 1fr);

@@ -1,0 +1,30 @@
+.save-request-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.save-request-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.save-request-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-1);
+}
+
+/* 目录选项：按层级缩进，带目录图标 */
+.save-request-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.save-request-option-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-3);
+}

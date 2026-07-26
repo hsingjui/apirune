@@ -1,14 +1,28 @@
 import { useEffect, useState } from "react";
-import { Message } from "@arco-design/web-react";
-import TitleBar from "./components/TitleBar";
-import Home from "./components/Home";
+import { toast } from "sonner";
 import CreateProjectModal from "./components/CreateProjectModal";
 import DeleteProjectModal from "./components/DeleteProjectModal";
+import Home from "./components/Home";
 import ProjectWorkspace from "./components/ProjectWorkspace";
+import TitleBar from "./components/TitleBar";
 import { usePersistentState } from "./hooks/usePersistentState";
-import { createProject, deleteProject, listProjects, updateProject } from "./lib/projects";
+import {
+  runCloseTabInterceptor,
+  useShortcutAction,
+  useShortcutListener,
+} from "./hooks/useShortcuts";
+import { t } from "./i18n";
+import {
+  createProject,
+  deleteProject,
+  ensureScratchProject,
+  listProjects,
+  reorderProjects,
+  updateProject,
+} from "./lib/projects";
 import { loadSettings } from "./lib/settings";
 import type { CreateProjectInput, Project } from "./types/project";
+import type { QuickRequest } from "./types/quick";
 import "./App.css";
 
 function App() {
@@ -24,18 +38,22 @@ function App() {
   // 删除确认弹窗：deletingProject 为 null 即关闭
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  // 主页搜索选中的快捷请求，交由对应项目的工作区打开后清除
+  const [pendingRequest, setPendingRequest] = useState<QuickRequest | null>(null);
 
   useEffect(() => {
-    listProjects().then(setProjects).catch((error) => console.error("加载项目失败:", error));
+    listProjects()
+      .then(setProjects)
+      .catch((error) => console.error("加载项目失败:", error));
   }, []);
 
   // 设置项「启动时恢复项目」：关闭时启动直接回到主页
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 仅需启动时执行一次，setState 引用稳定
   useEffect(() => {
     if (!loadSettings().restoreTabs) {
       setOpenIds([]);
       setActiveId(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 过滤掉项目已被移除后残留的失效标签
@@ -68,9 +86,11 @@ function App() {
       const project = await createProject(input);
       setProjects((prev) => [...prev, project]);
       setModalVisible(false);
-      Message.success(`项目「${project.name}」已创建`);
+      toast.success(t("app.projectCreated", { name: project.name }));
     } catch (error) {
-      Message.error(`创建项目失败：${error instanceof Error ? error.message : String(error)}`);
+      toast.error(
+        t("app.createFailed", { error: error instanceof Error ? error.message : String(error) }),
+      );
     }
   };
 
@@ -80,9 +100,11 @@ function App() {
       setProjects((prev) => prev.map((project) => (project.id === id ? updated : project)));
       setEditingProject(null);
       setModalVisible(false);
-      Message.success(`项目「${updated.name}」已保存`);
+      toast.success(t("app.projectSaved", { name: updated.name }));
     } catch (error) {
-      Message.error(`保存失败：${error instanceof Error ? error.message : String(error)}`);
+      toast.error(
+        t("app.saveFailed", { error: error instanceof Error ? error.message : String(error) }),
+      );
     }
   };
 
@@ -96,15 +118,29 @@ function App() {
         setActiveId(null);
       }
       setDeleteVisible(false);
-      Message.success(`项目「${target?.name ?? id}」已删除`);
+      toast.success(t("app.projectDeleted", { name: target?.name ?? id }));
     } catch (error) {
-      Message.error(`删除失败：${error instanceof Error ? error.message : String(error)}`);
+      toast.error(
+        t("app.deleteFailed", { error: error instanceof Error ? error.message : String(error) }),
+      );
     }
   };
 
   const openCreateModal = () => {
     setEditingProject(null);
     setModalVisible(true);
+  };
+
+  /** 主页拖拽排序：ids 为排序后的可见项目顺序 */
+  const handleReorderProjects = async (ids: string[]) => {
+    try {
+      await reorderProjects(ids);
+      setProjects(await listProjects());
+    } catch (error) {
+      toast.error(
+        t("app.saveFailed", { error: error instanceof Error ? error.message : String(error) }),
+      );
+    }
   };
 
   const openEditModal = (project: Project) => {
@@ -117,6 +153,49 @@ function App() {
     setDeleteVisible(true);
   };
 
+  /** 打开内置快速请求项目，首次使用时创建 */
+  const handleQuickRequest = async () => {
+    try {
+      const project = await ensureScratchProject(t("home.scratchProject"));
+      setProjects((prev) =>
+        prev.some((item) => item.id === project.id) ? prev : [...prev, project],
+      );
+      handleOpenProject(project.id);
+    } catch (error) {
+      toast.error(
+        t("app.createFailed", { error: error instanceof Error ? error.message : String(error) }),
+      );
+    }
+  };
+
+  /** 主页搜索选中快捷请求：打开所属项目并定位到该请求 */
+  const handleOpenRequest = (request: QuickRequest) => {
+    setPendingRequest(request);
+    handleOpenProject(request.projectId);
+  };
+
+  // 快捷键：应用前台时监听（见 useShortcutListener），可在设置中配置
+  useShortcutListener();
+  useShortcutAction("newProject", openCreateModal);
+  useShortcutAction("closeTab", () => {
+    // 工作区有快捷请求标签打开时，优先关闭标签而非项目
+    if (runCloseTabInterceptor()) return;
+    if (activeProject) handleCloseProject(activeProject.id);
+  });
+  const cycleTab = (step: number) => {
+    // 主页视为第一个位置，与项目标签一起循环切换
+    const ids: (string | null)[] = [null, ...openTabs.map((tab) => tab.id)];
+    const current = ids.indexOf(activeProject?.id ?? null);
+    setActiveId(ids[(current + step + ids.length) % ids.length]);
+  };
+  useShortcutAction("nextTab", () => cycleTab(1));
+  useShortcutAction("prevTab", () => cycleTab(-1));
+  useShortcutAction("gotoTab", (index) => {
+    if (!index) return;
+    const target = index === 9 ? openTabs[openTabs.length - 1] : openTabs[index - 1];
+    if (target) setActiveId(target.id);
+  });
+
   return (
     <div className="app-shell">
       <TitleBar
@@ -126,12 +205,13 @@ function App() {
         onCloseTab={handleCloseProject}
         onRefresh={() => setContentKey((key) => key + 1)}
       />
-      <main
-        className={`app-content${activeProject ? " app-content-bare" : ""}`}
-        key={contentKey}
-      >
+      <main className={`app-content${activeProject ? " app-content-bare" : ""}`} key={contentKey}>
         {activeProject ? (
-          <ProjectWorkspace project={activeProject} />
+          <ProjectWorkspace
+            project={activeProject}
+            initialRequest={pendingRequest?.projectId === activeProject.id ? pendingRequest : null}
+            onInitialRequestConsumed={() => setPendingRequest(null)}
+          />
         ) : (
           <Home
             projects={projects}
@@ -139,6 +219,9 @@ function App() {
             onCreateProject={openCreateModal}
             onEditProject={openEditModal}
             onDeleteProject={openDeleteModal}
+            onReorderProjects={handleReorderProjects}
+            onQuickRequest={handleQuickRequest}
+            onOpenRequest={handleOpenRequest}
           />
         )}
       </main>

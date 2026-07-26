@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { IconClose, IconHome, IconRefresh, IconSettings } from "@arco-design/web-react/icon";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEscClose } from "../hooks/useEscClose";
+import { House, RefreshCw, Settings, X } from "lucide-react";
+import { useState } from "react";
+import { useShortcutAction } from "../hooks/useShortcuts";
+import { useI18n } from "../i18n";
 import type { Project } from "../types/project";
 import ProjectIcon from "./ProjectIcon";
 import SettingsModal from "./SettingsModal";
@@ -18,10 +19,9 @@ interface TitleBarProps {
 }
 
 function TitleBar({ tabs, activeId, onSelectTab, onCloseTab, onRefresh }: TitleBarProps) {
+  const { t } = useI18n();
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  useEscClose(settingsVisible, () => setSettingsVisible(false));
 
   const handleRefresh = () => {
     if (refreshing) return;
@@ -29,6 +29,9 @@ function TitleBar({ tabs, activeId, onSelectTab, onCloseTab, onRefresh }: TitleB
     setRefreshing(true);
     window.setTimeout(() => setRefreshing(false), 600);
   };
+
+  useShortcutAction("refresh", handleRefresh);
+  useShortcutAction("openSettings", () => setSettingsVisible(true));
 
   const closeWindow = () => {
     void getCurrentWindow().close();
@@ -49,27 +52,27 @@ function TitleBar({ tabs, activeId, onSelectTab, onCloseTab, onRefresh }: TitleB
           <button
             type="button"
             className="traffic-light traffic-light-close"
-            title="关闭"
-            aria-label="关闭"
+            title={t("common.close")}
+            aria-label={t("common.close")}
             onClick={closeWindow}
           />
           <button
             type="button"
             className="traffic-light traffic-light-minimize"
-            title="最小化"
-            aria-label="最小化"
+            title={t("titlebar.minimize")}
+            aria-label={t("titlebar.minimize")}
             onClick={minimizeWindow}
           />
           <button
             type="button"
             className="traffic-light traffic-light-maximize"
-            title="最大化"
-            aria-label="最大化"
+            title={t("titlebar.maximize")}
+            aria-label={t("titlebar.maximize")}
             onClick={toggleMaximizeWindow}
           />
         </div>
 
-        <nav className="titlebar-tabs" role="tablist">
+        <div className="titlebar-tabs" role="tablist">
           <button
             type="button"
             role="tab"
@@ -77,8 +80,8 @@ function TitleBar({ tabs, activeId, onSelectTab, onCloseTab, onRefresh }: TitleB
             className={`titlebar-tab${activeId === null ? " titlebar-tab-active" : ""}`}
             onClick={() => onSelectTab(null)}
           >
-            <IconHome />
-            <span className="titlebar-tab-name">主页</span>
+            <House />
+            <span className="titlebar-tab-name">{t("titlebar.home")}</span>
           </button>
 
           {tabs.length > 0 && <span className="titlebar-divider" aria-hidden="true" />}
@@ -103,38 +106,38 @@ function TitleBar({ tabs, activeId, onSelectTab, onCloseTab, onRefresh }: TitleB
               <button
                 type="button"
                 className="titlebar-tab-close"
-                title="关闭项目"
-                aria-label={`关闭 ${tab.name}`}
+                title={t("titlebar.closeProject")}
+                aria-label={t("titlebar.closeNamed", { name: tab.name })}
                 onClick={(event) => {
                   event.stopPropagation();
                   onCloseTab(tab.id);
                 }}
               >
-                <IconClose />
+                <X />
               </button>
             </div>
           ))}
-        </nav>
+        </div>
       </div>
 
       <div className="titlebar-actions">
         <button
           type="button"
           className={`titlebar-btn${refreshing ? " titlebar-btn-refreshing" : ""}`}
-          title="刷新"
-          aria-label="刷新"
+          title={t("common.refresh")}
+          aria-label={t("common.refresh")}
           onClick={handleRefresh}
         >
-          <IconRefresh />
+          <RefreshCw />
         </button>
         <button
           type="button"
           className="titlebar-btn"
-          title="设置"
-          aria-label="设置"
+          title={t("common.settings")}
+          aria-label={t("common.settings")}
           onClick={() => setSettingsVisible(true)}
         >
-          <IconSettings />
+          <Settings />
         </button>
       </div>
 

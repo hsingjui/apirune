@@ -1,7 +1,10 @@
+/* 主页整体不滚动：问候区固定，剩余高度交给项目区，滚动条只出现在项目容器内 */
 .home {
   position: relative;
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
   padding: 36px 40px 40px;
 }
@@ -33,17 +36,168 @@
 
 /* 内容层压在光斑之上 */
 .home-header,
-.home-grid,
+.home-quick,
+.home-cols,
 .home-empty {
   position: relative;
 }
 
+/* 双栏：左侧项目网格 + 右侧快捷键栏，窄窗口时堆叠 */
+.home-cols {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  /* 显式约束唯一一行的高度：隐式行会按内容撑高，项目多时网格无法滚动并溢出容器 */
+  grid-template-rows: minmax(0, 1fr);
+  gap: 26px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 1080px) {
+  .home-cols {
+    /* 堆叠时项目区仍占满剩余高度，快捷键栏按内容高度贴底 */
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+}
+
+.home-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .home-header {
   display: flex;
+  flex-shrink: 0;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
+}
+
+/* 快捷入口卡片区：一行自适应铺排，窄窗口自动换行 */
+.home-quick {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.home-quick-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-large);
+  background-color: var(--color-bg-1);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    box-shadow var(--ease-out),
+    transform var(--ease-out),
+    border-color var(--ease-out);
+}
+
+.home-quick-card:hover {
+  border-color: var(--color-neutral-4);
+  box-shadow: 0 8px 20px rgba(56, 53, 47, 0.1);
+  transform: translateY(-2px);
+}
+
+.home-quick-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius-medium);
+  background-color: var(--c-accent-faint);
+  color: var(--c-accent);
+}
+
+.home-quick-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.home-quick-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.home-quick-title {
+  color: var(--color-text-1);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.home-quick-desc {
+  overflow: hidden;
+  color: var(--color-text-3);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* 伪搜索框：与顶部操作按钮同行，点击呼出 ⌘K 全局搜索 */
+.home-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 300px;
+  max-width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--color-bg-1);
+  color: var(--color-text-3);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color var(--ease-out);
+}
+
+.home-search:hover {
+  border-color: var(--color-neutral-4);
+}
+
+.home-search svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.home-search-text {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-search kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: 5px;
+  background-color: var(--color-fill-2);
+  color: var(--color-text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .home-title {
@@ -58,10 +212,51 @@
   color: var(--color-text-3);
 }
 
+.home-subtitle-sep {
+  margin: 0 8px;
+  color: var(--color-neutral-4);
+}
+
+/* 项目区标题：标题 + 数量胶囊 */
+.home-section-head {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.home-section-title {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-text-1);
+}
+
+.home-section-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background-color: var(--color-fill-2);
+  color: var(--color-text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .home-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  /* 行高按内容刚性排布：auto 行在容器限高、内容溢出时会塌缩到卡片 min-height，
+     导致卡片被压扁、底栏溢出卡片外；max-content 行永不压缩，超出部分交给滚动条 */
+  grid-auto-rows: max-content;
   gap: 20px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* 不让剩余空间拉伸行高 */
+  align-content: start;
+  /* 负外边距抵消内边距：为卡片 hover 的位移与投影留出不被裁切的空间 */
+  padding: 4px 8px 8px 4px;
+  margin: -4px -8px -8px -4px;
 }
 
 /* 卡片入场：上浮淡入，延迟由 inline style 交错 */
@@ -104,6 +299,16 @@
   transform: translateY(-2px);
 }
 
+/* 拖拽排序：源卡片半透，目标位置高亮 */
+.project-card-dragging {
+  opacity: 0.4;
+}
+
+.project-card-drop {
+  border-color: var(--c-accent);
+  box-shadow: inset 0 0 0 2px var(--c-accent);
+}
+
 .project-card .project-icon-badge {
   transition: transform var(--ease-out);
 }
@@ -124,8 +329,79 @@
   white-space: nowrap;
 }
 
-.project-card-date {
+/* 方法分布条：各 method 按占比分段着色，无接口时保留底色 */
+.project-card-mbar {
+  display: flex;
+  width: 100%;
+  height: 5px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background-color: var(--color-fill-2);
+  overflow: hidden;
+}
+
+.project-card-mbar span {
+  display: block;
+  height: 100%;
+}
+
+.project-card-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  width: 100%;
+  margin-top: -6px;
+  color: var(--color-text-3);
+  font-size: 11px;
+}
+
+.project-card-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.project-card-legend-item i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+
+.project-card-legend-item b {
+  color: var(--color-text-2);
+  font-weight: 600;
+}
+
+.project-card-legend-total {
+  margin-left: auto;
+}
+
+/* 卡片底栏：环境徽章 + 编辑时间 */
+.project-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
   margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-fill-2);
+}
+
+.project-card-env {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background-color: var(--color-fill-2);
+  color: var(--color-text-2);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.project-card-date {
+  margin-left: auto;
   color: var(--color-text-3);
   font-size: 12px;
 }
@@ -211,9 +487,12 @@
 /* 空状态：渐变徽章 + 引导文案 */
 .home-empty {
   display: flex;
+  flex: 1;
+  min-height: 0;
   flex-direction: column;
   align-items: center;
-  padding: 96px 0 80px;
+  justify-content: center;
+  padding: 0 0 40px;
   animation: project-card-enter 0.4s ease backwards;
 }
 
@@ -241,4 +520,58 @@
   margin: 8px 0 24px;
   font-size: 13px;
   color: var(--color-text-3);
+}
+
+/* 快捷键展示：右侧栏竖排卡片，随卡片入场动画淡入 */
+.home-rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: project-card-enter 0.36s ease backwards;
+  animation-delay: 160ms;
+}
+
+.home-shortcuts-card {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  padding: 4px 16px;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-large);
+  background-color: var(--color-bg-1);
+}
+
+.home-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--color-fill-2);
+  color: var(--color-text-2);
+  font-size: 13px;
+}
+
+.home-shortcut:last-child {
+  border-bottom: none;
+}
+
+.home-shortcut-keys {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.home-shortcut kbd {
+  min-width: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-neutral-3);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background-color: var(--color-fill-2);
+  color: var(--color-text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: center;
 }

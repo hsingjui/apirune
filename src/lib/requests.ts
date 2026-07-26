@@ -138,15 +138,9 @@ async function collectFolderIds(db: Database, id: string): Promise<string[]> {
 }
 
 /** 更新目录（部分字段：改名/移动/排序），自动刷新 updatedAt。目录不存在或移动成环时抛错 */
-export async function updateFolder(
-  id: string,
-  input: UpdateFolderInput,
-): Promise<Folder> {
+export async function updateFolder(id: string, input: UpdateFolderInput): Promise<Folder> {
   const db = await getDb();
-  const rows = await db.select<FolderRow[]>(
-    "SELECT * FROM folders WHERE id = $1",
-    [id],
-  );
+  const rows = await db.select<FolderRow[]>("SELECT * FROM folders WHERE id = $1", [id]);
   if (rows.length === 0) {
     throw new Error(`目录不存在: ${id}`);
   }
@@ -190,10 +184,7 @@ export async function listRequests(projectId: string): Promise<ApiRequest[]> {
 /** 按 id 查单个请求，不存在返回 null */
 export async function getRequest(id: string): Promise<ApiRequest | null> {
   const db = await getDb();
-  const rows = await db.select<RequestRow[]>(
-    "SELECT * FROM requests WHERE id = $1",
-    [id],
-  );
+  const rows = await db.select<RequestRow[]>("SELECT * FROM requests WHERE id = $1", [id]);
   return rows.length > 0 ? toRequest(rows[0]) : null;
 }
 
@@ -238,10 +229,7 @@ export async function createRequest(input: CreateRequestInput): Promise<ApiReque
 }
 
 /** 更新请求（部分字段），自动刷新 updatedAt。请求不存在时抛错 */
-export async function updateRequest(
-  id: string,
-  input: UpdateRequestInput,
-): Promise<ApiRequest> {
+export async function updateRequest(id: string, input: UpdateRequestInput): Promise<ApiRequest> {
   const existing = await getRequest(id);
   if (!existing) {
     throw new Error(`请求不存在: ${id}`);

@@ -74,6 +74,7 @@
 /* === 接口列表侧栏 === */
 
 .workspace-sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -81,8 +82,68 @@
   border-right: 1px solid var(--color-neutral-3);
 }
 
+/* 侧栏右缘拖拽手柄：悬停 / 拖拽时显示强调线 */
+.workspace-sidebar-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  z-index: 5;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.workspace-sidebar-resizer:hover,
+body.is-sidebar-resizing .workspace-sidebar-resizer {
+  background: linear-gradient(
+    to right,
+    transparent 2px,
+    var(--c-accent) 2px,
+    var(--c-accent) 4px,
+    transparent 4px
+  );
+}
+
+body.is-sidebar-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
 .workspace-sidebar-header {
-  padding: 16px 16px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 12px 10px 16px;
+}
+
+/* 侧栏头部右侧动作区：全局搜索 + 收起侧栏 */
+.workspace-sidebar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.workspace-sidebar-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  color: var(--c-ink-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.workspace-sidebar-collapse:hover {
+  background-color: rgba(56, 53, 47, 0.05);
+  color: var(--c-ink-primary);
 }
 
 .workspace-sidebar-title {
@@ -158,7 +219,7 @@
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--color-neutral-3);
 }
 
@@ -189,6 +250,223 @@
 .workspace-toolbar-btn:hover {
   background-color: rgba(56, 53, 47, 0.05);
   color: var(--c-ink-primary);
+}
+
+/* === 更多菜单：悬浮展示标签页关闭操作 === */
+
+.workspace-more {
+  position: relative;
+}
+
+/* 悬停桥接区：填平按钮与菜单之间的间隙，避免移入菜单时闪退 */
+.workspace-more::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 6px;
+}
+
+.workspace-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  transform-origin: top left;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease-out,
+    transform 0.16s ease-out,
+    visibility 0.16s;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 148px;
+  padding: 5px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--color-bg-3);
+  box-shadow: var(--shadow-float);
+}
+
+.workspace-more:hover .workspace-more-menu,
+.workspace-more:focus-within .workspace-more-menu {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* 点击菜单项后临时关闭，鼠标移出后恢复悬停展开（见 utils/hoverMenu.ts） */
+.workspace-more.workspace-more-closed .workspace-more-menu {
+  display: none;
+}
+
+.workspace-more-menu-item {
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  color: var(--c-ink-primary);
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.workspace-more-menu-item:hover:not(:disabled) {
+  background-color: rgba(56, 53, 47, 0.05);
+}
+
+.workspace-more-menu-item:disabled {
+  color: var(--c-ink-tertiary);
+  cursor: not-allowed;
+}
+
+/* 靠右对齐的悬停菜单（侧栏新建按钮 / 目录行新建入口） */
+.workspace-more-menu-right {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
+}
+
+/* === 接口树 === */
+
+.workspace-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  color: var(--c-ink-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ease-out);
+}
+
+.workspace-tree-row:hover {
+  background-color: rgba(56, 53, 47, 0.05);
+}
+
+.workspace-tree-chevron {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--c-ink-tertiary);
+  transition: transform var(--ease-out);
+}
+
+.workspace-tree-chevron-open {
+  transform: rotate(90deg);
+}
+
+.workspace-tree-folder-icon {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  color: var(--c-ink-secondary);
+}
+
+.workspace-tree-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-tree-method {
+  flex-shrink: 0;
+  min-width: 40px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* 悬停目录行时才显示新建入口 */
+.workspace-tree-add {
+  flex-shrink: 0;
+  visibility: hidden;
+}
+
+.workspace-tree-row:hover .workspace-tree-add,
+.workspace-tree-add:focus-within {
+  visibility: visible;
+}
+
+.workspace-tree-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  color: var(--c-ink-secondary);
+  cursor: pointer;
+}
+
+.workspace-tree-add-btn:hover {
+  background-color: rgba(56, 53, 47, 0.08);
+  color: var(--c-ink-primary);
+}
+
+.workspace-tree-add-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 固定分组行（接口 / 快捷请求） */
+.workspace-tree-section .workspace-tree-name {
+  font-weight: 500;
+}
+
+.workspace-tree-section-icon {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  color: var(--c-ink-secondary);
+}
+
+/* 分组内的提示文案（接口待开放 / 快捷请求为空） */
+.workspace-tree-hint {
+  margin: 2px 0 6px;
+  padding-left: 44px;
+  font-size: 12px;
+  color: var(--c-ink-tertiary);
+}
+
+/* 拖拽放置目标高亮：目录行 / 快捷请求分组头 */
+.workspace-tree-drop,
+.workspace-tree-drop:hover {
+  background-color: var(--c-accent-faint);
+  box-shadow: inset 0 0 0 1px var(--c-accent);
+}
+
+/* 行内新建输入行 */
+.workspace-tree-create {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+}
+
+.workspace-tree-create-input {
+  height: 26px;
+  font-size: 13px;
 }
 
 /* === 快捷请求标签页 === */
@@ -256,45 +534,190 @@
   opacity: 1;
 }
 
-/* 请求编辑器容器：常驻渲染，hidden 时隐藏 */
+/* 请求编辑器容器：常驻渲染，hidden 时隐藏；首次挂载时轻柔浮现 */
 .workspace-request-editor {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  animation: fade-slide-up 0.24s ease-out;
 }
 
 .workspace-request-editor[hidden] {
   display: none;
 }
 
-/* 环境选择：胶囊状占位 */
+/* 环境选择：输入框样式触发器 + 下拉菜单 + 管理按钮 */
+/* 环境切换：选择按钮与管理按钮融为一体的组合控件 */
+.workspace-env-group {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--c-surface-high);
+  transition: border-color var(--ease-out);
+}
+
+.workspace-env-group:hover {
+  border-color: var(--color-neutral-4);
+}
+
+.workspace-env-select {
+  position: static;
+  display: flex;
+}
+
 .workspace-env {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  justify-content: space-between;
+  gap: 8px;
+  width: 112px;
   padding: 5px 12px;
-  border: 1px solid var(--color-neutral-3);
-  border-radius: 9999px;
-  background-color: var(--c-surface-high);
-  color: var(--color-text-2);
+  border: none;
+  border-radius: var(--border-radius-medium) 0 0 var(--border-radius-medium);
+  background-color: transparent;
+  color: var(--c-ink-primary);
   font-size: 13px;
   cursor: pointer;
-  transition:
-    border-color var(--ease-out),
-    color var(--ease-out);
+  transition: background-color var(--ease-out);
 }
 
 .workspace-env:hover {
-  border-color: var(--color-neutral-4);
-  color: var(--color-text-1);
+  background-color: rgba(56, 53, 47, 0.04);
 }
 
-.workspace-env-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--c-accent);
+.workspace-env-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-env-placeholder {
+  color: var(--c-ink-tertiary);
+}
+
+.workspace-env-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--c-ink-tertiary);
+}
+
+/* 组合控件右侧的管理环境按钮：以分隔线与选择区衔接 */
+.workspace-env-manage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  padding: 0;
+  border: none;
+  border-left: 1px solid var(--color-neutral-3);
+  border-radius: 0 var(--border-radius-medium) var(--border-radius-medium) 0;
+  background-color: transparent;
+  color: var(--c-ink-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.workspace-env-manage:hover {
+  background-color: rgba(56, 53, 47, 0.04);
+  color: var(--c-ink-primary);
+}
+
+.workspace-env-manage svg {
+  width: 15px;
+  height: 15px;
+}
+
+.workspace-env-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  transform-origin: top right;
+  animation: menu-pop-in 0.16s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 230px;
+  padding: 6px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--color-bg-3);
+  box-shadow: var(--shadow-float);
+}
+
+.workspace-env-empty {
+  margin: 0;
+  padding: 10px;
+  color: var(--c-ink-tertiary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.workspace-env-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  color: var(--c-ink-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--ease-out);
+}
+
+.workspace-env-item:hover,
+.workspace-env-item-active {
+  background-color: rgba(56, 53, 47, 0.05);
+}
+
+.workspace-env-item-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: var(--border-radius-small);
+  font-size: 12px;
+}
+
+.workspace-env-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-env-manage-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 9px 10px 5px;
+  border: none;
+  border-top: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--c-accent);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workspace-env-manage-entry svg {
+  width: 15px;
+  height: 15px;
+}
+
+.workspace-env-manage-entry:hover {
+  color: var(--c-accent-strong, var(--c-accent));
 }
 
 .workspace-content {
@@ -306,6 +729,8 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 32px;
+  /* 切换到空状态/设置页时的进场动画 */
+  animation: fade-slide-up 0.28s ease-out;
 }
 
 /* === 快捷入口卡片 === */
@@ -469,61 +894,4 @@
 .workspace-settings-mono {
   font-family: var(--font-mono);
   font-size: 12px;
-}
-
-/* === 底部状态栏 === */
-
-.workspace-statusbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  height: 32px;
-  padding: 0 12px;
-  border-top: 1px solid var(--color-neutral-3);
-}
-
-.workspace-statusbar-left,
-.workspace-statusbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.workspace-statusbar-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  border-radius: var(--border-radius-small);
-  background: transparent;
-  color: var(--c-ink-secondary);
-  font-size: 14px;
-  cursor: pointer;
-  transition:
-    background-color var(--ease-out),
-    color var(--ease-out);
-}
-
-.workspace-statusbar-btn:hover {
-  background-color: rgba(56, 53, 47, 0.05);
-  color: var(--c-ink-primary);
-}
-
-.workspace-statusbar-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-text-3);
-  font-size: 12px;
-}
-
-.workspace-statusbar-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: #00b42a;
 }

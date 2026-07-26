@@ -2,10 +2,12 @@
  * 全局主题：Claude Editorial（Warm Rationality / 温暖的理性）
  * 参考 src/assets/design.md：纸质感、衬线体、低对比度、阅读导向。
  *
- * 实现方式：定义 Claude 设计令牌（--c-*），并把 Arco 的浅色主题变量
- * （--gray-* / --primary-* RGB 三元组、--color-bg-*）整体映射到暖色纸面体系，
- * Arco 组件（按钮、弹窗、输入框、Message）无需逐个改样式即自动继承。
+ * 实现方式：定义 Claude 设计令牌（--c-*），并保留一套源自 Arco 时代的
+ * 中性/品牌色阶变量（--gray-* / --primary-* RGB 三元组、--color-*）供组件级 CSS 引用；
+ * shadcn/ui 组件通过 @theme inline 映射同一套纸面体系。
  */
+
+@import "tailwindcss";
 
 :root {
   /* 1. Surfaces（背景层级） */
@@ -22,21 +24,570 @@
   --c-accent: #cc7c5e;
   --c-accent-hover: #b56b50;
   --c-accent-faint: rgba(204, 124, 94, 0.15);
-  --c-focus-ring: rgba(204, 124, 94, 0.25);
+  --c-focus-ring: rgba(56, 53, 47, 0.1); /* 中性墨色焦点光环 */
 
   /* 4. Boundaries（沙色边界） */
   --c-border: #e3e0d6;
 
+  /* 5. JSON 语法高亮（深色主题在 [data-theme] 块覆盖） */
+  --json-key: #9c5a42;
+  --json-string: #55764c;
+  --json-number: #4a6da7;
+  --json-bool: #8a5cb8;
+  --json-null: var(--c-ink-tertiary);
+  --json-invalid: #f53f3f;
+
   /* Fonts & Shadows（阴影基色用墨色，不用纯黑） */
-  --font-serif: "Newsreader", "Source Han Serif SC", "Songti SC", "STSong", "Noto Serif SC", Georgia, serif;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-    "Helvetica Neue", Arial, sans-serif;
+  --font-serif:
+    "Newsreader", "Source Han Serif SC", "Songti SC", "STSong", "Noto Serif SC", Georgia, serif;
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
   --shadow-subtle: 0 1px 2px rgba(56, 53, 47, 0.04);
   --shadow-float: 0 4px 12px rgba(56, 53, 47, 0.08);
 
-  /* 动效节奏：钝化弹簧感 */
+  /* 动效节奏:钝化弹簧感 */
   --ease-out: 0.3s ease-out;
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* === shadcn/ui 设计令牌：映射到暖色纸面体系 === */
+  --radius: 10px;
+  --background: var(--c-canvas);
+  --foreground: var(--c-ink-primary);
+  --card: var(--c-surface-high);
+  --card-foreground: var(--c-ink-primary);
+  --popover: var(--c-surface-high);
+  --popover-foreground: var(--c-ink-primary);
+  --primary: var(--c-accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--c-surface);
+  --secondary-foreground: var(--c-ink-primary);
+  --muted: var(--c-surface);
+  --muted-foreground: var(--c-ink-secondary);
+  --accent: var(--c-surface);
+  --accent-foreground: var(--c-ink-primary);
+  --destructive: #f53f3f;
+  --destructive-foreground: #ffffff;
+  --border: var(--c-border);
+  --input: var(--c-border);
+  --ring: var(--c-ink-tertiary);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* =====================================================================
+   内置主题：通过 html[data-theme] 覆盖设计令牌（默认主题 light 即 :root）。
+   每套主题分两块：:root[data-theme] 覆盖 --c-* 基础令牌；
+   [data-theme] body 覆盖灰阶/品牌色阶三元组与遮罩色。
+   ===================================================================== */
+
+/* --- 暖夜（深色，焦陶强调色不变） --- */
+:root[data-theme="dark"] {
+  --c-canvas: #262521;
+  --c-surface: #302e29;
+  --c-surface-high: #36342e;
+  --c-ink-primary: #e8e6dd;
+  --c-ink-secondary: #a8a49a;
+  --c-ink-tertiary: #7a766d;
+  --c-accent: #cc7c5e;
+  --c-accent-hover: #d88f6f;
+  --c-accent-faint: rgba(204, 124, 94, 0.22);
+  --c-focus-ring: rgba(232, 230, 221, 0.12);
+  --c-border: #3d3a34;
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --json-key: #d99e83;
+  --json-string: #a3c293;
+  --json-number: #8fb3e3;
+  --json-bool: #c39ee8;
+  --json-invalid: #f0776a;
+}
+
+[data-theme="dark"] body {
+  --gray-1: 44, 42, 38;
+  --gray-2: 48, 46, 41;
+  --gray-3: 61, 58, 52;
+  --gray-4: 74, 70, 63;
+  --gray-5: 92, 87, 78;
+  --gray-6: 122, 118, 109;
+  --gray-7: 143, 139, 129;
+  --gray-8: 168, 164, 154;
+  --gray-9: 201, 197, 187;
+  --gray-10: 232, 230, 221;
+  --primary-1: 61, 45, 38;
+  --primary-2: 79, 55, 45;
+  --primary-3: 110, 72, 56;
+  --primary-4: 152, 95, 72;
+  --primary-5: 178, 110, 83;
+  --primary-6: 204, 124, 94;
+  --primary-7: 216, 143, 111;
+  --primary-8: 227, 161, 132;
+  --primary-9: 239, 196, 176;
+  --danger-1: 74, 42, 38;
+  --danger-6: 232, 105, 90;
+  --success-6: 92, 184, 110;
+  --color-mask-bg: rgba(0, 0, 0, 0.55);
+}
+
+/* --- 青瓷（浅色，青绿色调） --- */
+:root[data-theme="sage"] {
+  --c-canvas: #f5f7f2;
+  --c-surface: #e9eee4;
+  --c-surface-high: #ffffff;
+  --c-ink-primary: #31372e;
+  --c-ink-secondary: #656d5f;
+  --c-ink-tertiary: #8d9685;
+  --c-accent: #5f8d63;
+  --c-accent-hover: #4f7a56;
+  --c-accent-faint: rgba(95, 141, 99, 0.15);
+  --c-focus-ring: rgba(49, 55, 46, 0.1);
+  --c-border: #dbe2d3;
+}
+
+[data-theme="sage"] body {
+  --gray-1: 242, 246, 238;
+  --gray-2: 233, 238, 228;
+  --gray-3: 219, 226, 211;
+  --gray-4: 199, 208, 190;
+  --gray-5: 172, 182, 163;
+  --gray-6: 141, 150, 133;
+  --gray-7: 120, 129, 113;
+  --gray-8: 101, 109, 95;
+  --gray-9: 72, 79, 68;
+  --gray-10: 49, 55, 46;
+  --primary-1: 234, 242, 235;
+  --primary-2: 213, 229, 214;
+  --primary-3: 183, 208, 185;
+  --primary-4: 148, 183, 151;
+  --primary-5: 120, 162, 124;
+  --primary-6: 95, 141, 99;
+  --primary-7: 79, 122, 86;
+  --primary-8: 64, 104, 69;
+  --primary-9: 50, 86, 55;
+}
+
+/* --- 海雾（浅色，蓝灰色调） --- */
+:root[data-theme="ocean"] {
+  --c-canvas: #f4f7f9;
+  --c-surface: #e8eef2;
+  --c-surface-high: #ffffff;
+  --c-ink-primary: #2c3540;
+  --c-ink-secondary: #5f6c77;
+  --c-ink-tertiary: #87949f;
+  --c-accent: #4f7fa3;
+  --c-accent-hover: #426e90;
+  --c-accent-faint: rgba(79, 127, 163, 0.15);
+  --c-focus-ring: rgba(44, 53, 64, 0.1);
+  --c-border: #d8e1e8;
+}
+
+[data-theme="ocean"] body {
+  --gray-1: 241, 245, 248;
+  --gray-2: 232, 238, 242;
+  --gray-3: 216, 225, 232;
+  --gray-4: 195, 206, 215;
+  --gray-5: 167, 180, 191;
+  --gray-6: 135, 148, 159;
+  --gray-7: 114, 127, 138;
+  --gray-8: 95, 108, 119;
+  --gray-9: 66, 78, 88;
+  --gray-10: 44, 53, 64;
+  --primary-1: 232, 240, 246;
+  --primary-2: 209, 226, 237;
+  --primary-3: 176, 203, 221;
+  --primary-4: 141, 178, 203;
+  --primary-5: 108, 151, 182;
+  --primary-6: 79, 127, 163;
+  --primary-7: 66, 110, 144;
+  --primary-8: 54, 93, 124;
+  --primary-9: 42, 76, 103;
+}
+
+/* --- 墨岩（深色，冷灰 + 青蓝强调色） --- */
+:root[data-theme="night"] {
+  --c-canvas: #1f2126;
+  --c-surface: #282b31;
+  --c-surface-high: #2d3138;
+  --c-ink-primary: #e2e5e9;
+  --c-ink-secondary: #a8aeb7;
+  --c-ink-tertiary: #7a8089;
+  --c-accent: #8ba8d0;
+  --c-accent-hover: #9eb7d9;
+  --c-accent-faint: rgba(139, 168, 208, 0.2);
+  --c-focus-ring: rgba(226, 229, 233, 0.12);
+  --c-border: #383c42;
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --json-key: #dea88e;
+  --json-string: #a3c293;
+  --json-number: #8fb3e3;
+  --json-bool: #c39ee8;
+  --json-invalid: #f0776a;
+  /* 浅蓝强调色上用深墨文字保证对比度 */
+  --primary-foreground: #1f2126;
+}
+
+[data-theme="night"] body {
+  --gray-1: 36, 39, 44;
+  --gray-2: 40, 43, 49;
+  --gray-3: 56, 60, 66;
+  --gray-4: 72, 77, 84;
+  --gray-5: 92, 98, 106;
+  --gray-6: 122, 128, 137;
+  --gray-7: 143, 149, 158;
+  --gray-8: 168, 174, 183;
+  --gray-9: 201, 206, 214;
+  --gray-10: 226, 229, 233;
+  --primary-1: 42, 49, 61;
+  --primary-2: 52, 62, 79;
+  --primary-3: 68, 82, 104;
+  --primary-4: 90, 109, 138;
+  --primary-5: 114, 138, 172;
+  --primary-6: 139, 168, 208;
+  --primary-7: 158, 183, 217;
+  --primary-8: 178, 198, 226;
+  --primary-9: 199, 213, 235;
+  --danger-1: 72, 42, 45;
+  --danger-6: 232, 105, 90;
+  --success-6: 92, 184, 110;
+  --color-mask-bg: rgba(0, 0, 0, 0.6);
+}
+
+/* --- 紫藤（浅色，藤紫色调） --- */
+:root[data-theme="wisteria"] {
+  --c-canvas: #f7f5fa;
+  --c-surface: #eeeaf4;
+  --c-surface-high: #ffffff;
+  --c-ink-primary: #35313e;
+  --c-ink-secondary: #6b6577;
+  --c-ink-tertiary: #948e9f;
+  --c-accent: #7d6bae;
+  --c-accent-hover: #6d5c9c;
+  --c-accent-faint: rgba(125, 107, 174, 0.14);
+  --c-focus-ring: rgba(53, 49, 62, 0.1);
+  --c-border: #e1dbea;
+  --json-key: #7d5aa6;
+  --json-string: #55764c;
+  --json-number: #4a6da7;
+  --json-bool: #b0568b;
+}
+
+[data-theme="wisteria"] body {
+  --gray-1: 244, 241, 248;
+  --gray-2: 238, 234, 244;
+  --gray-3: 225, 219, 234;
+  --gray-4: 206, 199, 218;
+  --gray-5: 179, 171, 193;
+  --gray-6: 148, 142, 159;
+  --gray-7: 127, 120, 139;
+  --gray-8: 107, 101, 119;
+  --gray-9: 77, 71, 90;
+  --gray-10: 53, 49, 62;
+  --primary-1: 240, 236, 247;
+  --primary-2: 224, 217, 239;
+  --primary-3: 200, 189, 226;
+  --primary-4: 172, 157, 207;
+  --primary-5: 148, 131, 190;
+  --primary-6: 125, 107, 174;
+  --primary-7: 109, 92, 156;
+  --primary-8: 93, 78, 136;
+  --primary-9: 76, 63, 113;
+}
+
+/* --- 胭脂（浅色，玫瑰色调） --- */
+:root[data-theme="rose"] {
+  --c-canvas: #faf6f5;
+  --c-surface: #f3eae8;
+  --c-surface-high: #ffffff;
+  --c-ink-primary: #3c3234;
+  --c-ink-secondary: #77686b;
+  --c-ink-tertiary: #a09194;
+  --c-accent: #c26473;
+  --c-accent-hover: #ad5464;
+  --c-accent-faint: rgba(194, 100, 115, 0.14);
+  --c-focus-ring: rgba(60, 50, 52, 0.1);
+  --c-border: #ecdfdd;
+  --json-key: #b04a5c;
+  --json-string: #55764c;
+  --json-number: #4a6da7;
+  --json-bool: #8a5cb8;
+}
+
+[data-theme="rose"] body {
+  --gray-1: 248, 242, 240;
+  --gray-2: 243, 234, 232;
+  --gray-3: 236, 223, 221;
+  --gray-4: 219, 203, 201;
+  --gray-5: 192, 174, 174;
+  --gray-6: 160, 145, 148;
+  --gray-7: 138, 123, 126;
+  --gray-8: 119, 104, 107;
+  --gray-9: 86, 73, 76;
+  --gray-10: 60, 50, 52;
+  --primary-1: 250, 236, 238;
+  --primary-2: 244, 215, 219;
+  --primary-3: 233, 183, 190;
+  --primary-4: 219, 148, 159;
+  --primary-5: 207, 122, 136;
+  --primary-6: 194, 100, 115;
+  --primary-7: 173, 84, 100;
+  --primary-8: 150, 69, 85;
+  --primary-9: 125, 55, 70;
+}
+
+/* --- 松影（深色，苔绿强调色） --- */
+:root[data-theme="forest"] {
+  --c-canvas: #20241f;
+  --c-surface: #2a2f28;
+  --c-surface-high: #30362e;
+  --c-ink-primary: #e4e8e0;
+  --c-ink-secondary: #a6ad9f;
+  --c-ink-tertiary: #767e70;
+  --c-accent: #92b888;
+  --c-accent-hover: #a3c599;
+  --c-accent-faint: rgba(146, 184, 136, 0.2);
+  --c-focus-ring: rgba(228, 232, 224, 0.12);
+  --c-border: #383e35;
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --json-key: #dba184;
+  --json-string: #a9c896;
+  --json-number: #8fb3e3;
+  --json-bool: #c39ee8;
+  --json-invalid: #f0776a;
+  /* 浅绿强调色上用深墨文字保证对比度 */
+  --primary-foreground: #20241f;
+}
+
+[data-theme="forest"] body {
+  --gray-1: 38, 43, 37;
+  --gray-2: 42, 47, 40;
+  --gray-3: 56, 62, 53;
+  --gray-4: 71, 78, 67;
+  --gray-5: 89, 97, 84;
+  --gray-6: 118, 126, 112;
+  --gray-7: 140, 148, 133;
+  --gray-8: 166, 173, 159;
+  --gray-9: 199, 205, 192;
+  --gray-10: 228, 232, 224;
+  --primary-1: 46, 58, 44;
+  --primary-2: 58, 74, 55;
+  --primary-3: 77, 99, 72;
+  --primary-4: 101, 130, 94;
+  --primary-5: 123, 157, 115;
+  --primary-6: 146, 184, 136;
+  --primary-7: 163, 197, 153;
+  --primary-8: 181, 209, 172;
+  --primary-9: 203, 222, 196;
+  --danger-1: 74, 44, 40;
+  --danger-6: 232, 105, 90;
+  --success-6: 92, 184, 110;
+  --color-mask-bg: rgba(0, 0, 0, 0.6);
+}
+
+/* --- 暮紫（深色，藤紫强调色） --- */
+:root[data-theme="plum"] {
+  --c-canvas: #232028;
+  --c-surface: #2c2933;
+  --c-surface-high: #322e3a;
+  --c-ink-primary: #e6e3ec;
+  --c-ink-secondary: #aca6b8;
+  --c-ink-tertiary: #7d7689;
+  --c-accent: #b3a1d6;
+  --c-accent-hover: #c2b2df;
+  --c-accent-faint: rgba(179, 161, 214, 0.2);
+  --c-focus-ring: rgba(230, 227, 236, 0.12);
+  --c-border: #3b3744;
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --json-key: #dea88e;
+  --json-string: #a3c293;
+  --json-number: #8fb3e3;
+  --json-bool: #cfa9ef;
+  --json-invalid: #f0776a;
+  /* 浅紫强调色上用深墨文字保证对比度 */
+  --primary-foreground: #232028;
+}
+
+[data-theme="plum"] body {
+  --gray-1: 41, 38, 47;
+  --gray-2: 44, 41, 51;
+  --gray-3: 59, 55, 68;
+  --gray-4: 75, 70, 86;
+  --gray-5: 94, 88, 107;
+  --gray-6: 125, 118, 137;
+  --gray-7: 146, 140, 158;
+  --gray-8: 172, 166, 184;
+  --gray-9: 203, 198, 214;
+  --gray-10: 230, 227, 236;
+  --primary-1: 51, 45, 66;
+  --primary-2: 65, 57, 86;
+  --primary-3: 86, 75, 113;
+  --primary-4: 112, 98, 145;
+  --primary-5: 145, 129, 180;
+  --primary-6: 179, 161, 214;
+  --primary-7: 194, 178, 223;
+  --primary-8: 208, 195, 231;
+  --primary-9: 222, 213, 239;
+  --danger-1: 73, 42, 50;
+  --danger-6: 232, 105, 90;
+  --success-6: 92, 184, 110;
+  --color-mask-bg: rgba(0, 0, 0, 0.6);
+}
+
+/* =====================================================================
+   中国传统色系列：色名与强调色取自《中国传统色 故宫里的色彩美学》
+   （参考 daodaolee/china-color 色谱）。
+   ===================================================================== */
+
+/* --- 天水碧（浅色，处暑·天水碧 #5AA4AE） --- */
+:root[data-theme="tianshui"] {
+  --c-canvas: #f3f7f7;
+  --c-surface: #e5eeee;
+  --c-surface-high: #ffffff;
+  --c-ink-primary: #2e3a3b;
+  --c-ink-secondary: #5f6f70;
+  --c-ink-tertiary: #879697;
+  --c-accent: #5aa4ae;
+  --c-accent-hover: #4a929c;
+  --c-accent-faint: rgba(90, 164, 174, 0.14);
+  --c-focus-ring: rgba(46, 58, 59, 0.1);
+  --c-border: #d3e2e2;
+}
+
+[data-theme="tianshui"] body {
+  --gray-1: 240, 246, 246;
+  --gray-2: 229, 238, 238;
+  --gray-3: 211, 226, 226;
+  --gray-4: 190, 208, 208;
+  --gray-5: 163, 183, 184;
+  --gray-6: 135, 150, 151;
+  --gray-7: 115, 131, 132;
+  --gray-8: 95, 111, 112;
+  --gray-9: 68, 84, 85;
+  --gray-10: 46, 58, 59;
+  --primary-1: 232, 243, 244;
+  --primary-2: 209, 232, 234;
+  --primary-3: 176, 214, 218;
+  --primary-4: 143, 195, 201;
+  --primary-5: 116, 180, 187;
+  --primary-6: 90, 164, 174;
+  --primary-7: 74, 146, 156;
+  --primary-8: 60, 124, 133;
+  --primary-9: 47, 102, 110;
+}
+
+/* --- 柘黄（浅色，惊蛰·柘黃 #C67915，底色取白露·凝脂） --- */
+:root[data-theme="zhehuang"] {
+  --c-canvas: #f7f4ea;
+  --c-surface: #efe9d9;
+  --c-surface-high: #ffffff;
+  --c-ink-primary: #3b352a;
+  --c-ink-secondary: #756c5a;
+  --c-ink-tertiary: #9c927e;
+  --c-accent: #c67915;
+  --c-accent-hover: #aa6a12;
+  --c-accent-faint: rgba(198, 121, 21, 0.13);
+  --c-focus-ring: rgba(59, 53, 42, 0.1);
+  --c-border: #e5dcc4;
+  --json-key: #a5651a;
+}
+
+[data-theme="zhehuang"] body {
+  --gray-1: 245, 241, 231;
+  --gray-2: 239, 233, 217;
+  --gray-3: 229, 220, 196;
+  --gray-4: 212, 201, 173;
+  --gray-5: 186, 174, 145;
+  --gray-6: 156, 146, 126;
+  --gray-7: 133, 124, 105;
+  --gray-8: 117, 108, 90;
+  --gray-9: 84, 77, 62;
+  --gray-10: 59, 53, 42;
+  --primary-1: 250, 238, 222;
+  --primary-2: 244, 220, 185;
+  --primary-3: 234, 192, 133;
+  --primary-4: 221, 160, 80;
+  --primary-5: 210, 140, 45;
+  --primary-6: 198, 121, 21;
+  --primary-7: 170, 106, 18;
+  --primary-8: 143, 89, 15;
+  --primary-9: 116, 72, 12;
+}
+
+/* --- 螺子黛（深色，谷雨·螺子黛 #13393E 化底，强调色取处暑·西子 #87C0CA） --- */
+:root[data-theme="luozidai"] {
+  --c-canvas: #1c2529;
+  --c-surface: #253034;
+  --c-surface-high: #2a373b;
+  --c-ink-primary: #e0e8e9;
+  --c-ink-secondary: #a2b1b3;
+  --c-ink-tertiary: #71828a;
+  --c-accent: #87c0ca;
+  --c-accent-hover: #98cdd6;
+  --c-accent-faint: rgba(135, 192, 202, 0.2);
+  --c-focus-ring: rgba(224, 232, 233, 0.12);
+  --c-border: #344246;
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --json-key: #dea88e;
+  --json-string: #a3c293;
+  --json-number: #8fb3e3;
+  --json-bool: #c39ee8;
+  --json-invalid: #f0776a;
+  /* 浅青强调色上用深墨文字保证对比度 */
+  --primary-foreground: #1c2529;
+}
+
+[data-theme="luozidai"] body {
+  --gray-1: 35, 45, 49;
+  --gray-2: 37, 48, 52;
+  --gray-3: 52, 66, 70;
+  --gray-4: 67, 84, 89;
+  --gray-5: 86, 105, 110;
+  --gray-6: 113, 130, 138;
+  --gray-7: 136, 152, 158;
+  --gray-8: 162, 177, 179;
+  --gray-9: 196, 208, 210;
+  --gray-10: 224, 232, 233;
+  --primary-1: 42, 62, 66;
+  --primary-2: 53, 80, 86;
+  --primary-3: 70, 105, 113;
+  --primary-4: 92, 135, 144;
+  --primary-5: 113, 163, 173;
+  --primary-6: 135, 192, 202;
+  --primary-7: 152, 205, 214;
+  --primary-8: 172, 216, 223;
+  --primary-9: 195, 228, 233;
+  --danger-1: 74, 44, 44;
+  --danger-6: 232, 105, 90;
+  --success-6: 92, 184, 110;
+  --color-mask-bg: rgba(0, 0, 0, 0.6);
 }
 
 html,
@@ -89,6 +640,22 @@ body {
   --primary-8: 156, 90, 66;
   --primary-9: 130, 74, 53;
 
+  /* === 功能色阶（RGB 三元组，取自 Arco 色板） === */
+  --danger-1: 255, 236, 232;
+  --danger-6: 245, 63, 63;
+  --success-6: 0, 180, 42;
+
+  /* === 由色阶派生的语义变量（原由 arco.css 提供，现自行定义） === */
+  --color-text-1: rgb(var(--gray-10));
+  --color-text-2: rgb(var(--gray-8));
+  --color-text-3: rgb(var(--gray-6));
+  --color-text-4: rgb(var(--gray-4));
+  --color-fill-1: rgb(var(--gray-1));
+  --color-fill-2: rgb(var(--gray-2));
+  --color-fill-3: rgb(var(--gray-3));
+  --color-neutral-3: rgb(var(--gray-3));
+  --color-neutral-4: rgb(var(--gray-4));
+
   /* === Arco 背景层级：内容区是纸面 Canvas，卡片/弹层是白色高亮层 === */
   --color-bg-1: var(--c-surface-high);
   --color-bg-2: var(--c-canvas);
@@ -139,39 +706,122 @@ textarea {
   caret-color: var(--c-accent);
 }
 
-/* === Arco 组件级微调（少量、有针对性） === */
+/* === 图标基线 === */
 
-/* 模态框：白色独立卡片 + 暖色悬浮阴影，衬托在 Canvas 之上 */
-.arco-modal {
-  background-color: var(--c-surface-high);
-  border-radius: var(--border-radius-large);
-  box-shadow: 0 8px 24px rgba(56, 53, 47, 0.14);
+@layer base {
+  /* Tailwind v4 中 border 类默认色是 currentColor，需映射到沙色边界令牌 */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
 }
 
-/* 模态框标题：衬线体书卷气 */
-.arco-modal-header .arco-modal-title {
-  font-family: var(--font-serif);
-  font-size: 18px;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+/* Lucide 图标对齐原 Arco 行为：1em 随字号缩放，组件 CSS 可用 font-size 控制尺寸 */
+@layer base {
+  svg.lucide {
+    width: 1em;
+    height: 1em;
+  }
 }
 
-/* 通用滚动条，贴近暖色中性色 */
+/* 全局隐藏滚动条：容器内不允许出现滚动条，滚动能力保留 */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-neutral-4) transparent;
+  scrollbar-width: none;
 }
 
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
-*::-webkit-scrollbar-thumb {
-  background-color: var(--color-neutral-4);
-  border-radius: var(--border-radius-medium);
+/* =====================================================================
+   全局动效:弹层、菜单与内容切换的过渡动画。
+   项目未引入 tw-animate-css,shadcn 组件里的 animate-in 类不生效,
+   这里按 data-slot + data-state 补齐 Radix 弹层的进出场动画。
+   ===================================================================== */
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
-*::-webkit-scrollbar-track {
-  background: transparent;
+@keyframes overlay-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
+@keyframes dialog-pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes menu-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Radix Dialog:遮罩淡入淡出,内容弹性浮现(closed 动画让 Radix 等待退场后再卸载) */
+[data-slot="dialog-overlay"][data-state="open"] {
+  animation: overlay-fade-in 0.25s ease-out;
+}
+
+[data-slot="dialog-overlay"][data-state="closed"] {
+  animation: overlay-fade-out 0.18s ease-in forwards;
+}
+
+[data-slot="dialog-content"][data-state="open"] {
+  animation: dialog-pop-in 0.32s var(--ease-spring);
+}
+
+[data-slot="dialog-content"][data-state="closed"] {
+  animation: dialog-pop-out 0.16s ease-in forwards;
+}
+
+/* Tooltip / Select 弹层轻柔浮现 */
+[data-slot="tooltip-content"] {
+  animation: menu-pop-in 0.15s ease-out;
+}
+
+[data-slot="select-content"][data-state="open"] {
+  animation: menu-pop-in 0.16s ease-out;
+}
+
+[data-slot="select-content"][data-state="closed"] {
+  animation: overlay-fade-out 0.12s ease-in forwards;
+}
+
+/* 无障碍:用户偏好减弱动效时,压缩所有动画与过渡 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: 无障碍降级必须覆盖组件内所有动画定义 */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 同上 */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: 同上 */
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,11 +1,7 @@
 /* 设置弹窗：左侧分类导航 + 右侧内容面板，延续暖纸面风格 */
 
-.settings-modal .arco-modal-header {
-  display: none;
-}
-
-.settings-modal .arco-modal-content {
-  padding: 0;
+.settings-modal {
+  overflow: hidden;
 }
 
 .settings-layout {
@@ -180,6 +176,7 @@
 
 .settings-theme-list {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
 }
 
@@ -235,13 +232,14 @@
   font-size: 11px;
 }
 
-/* 迷你主题预览图 */
+/* 迷你主题预览图：配色由 lib/themes.ts 的主题定义内联提供 */
 .settings-theme-preview {
   display: flex;
   gap: 6px;
   width: 120px;
   height: 76px;
   padding: 8px;
+  border: 1px solid transparent;
   border-radius: 6px;
 }
 
@@ -267,36 +265,119 @@
   width: 60%;
 }
 
-.settings-theme-preview-light {
-  background-color: var(--c-canvas);
-  border: 1px solid var(--c-border);
-}
-
-.settings-theme-preview-light .settings-theme-preview-side {
-  background-color: var(--c-surface);
-}
-
-.settings-theme-preview-light .settings-theme-preview-main span {
-  background-color: var(--c-border);
-}
-
-.settings-theme-preview-dark {
-  background-color: #2b2925;
-}
-
-.settings-theme-preview-dark .settings-theme-preview-side {
-  background-color: #3a3731;
-}
-
-.settings-theme-preview-dark .settings-theme-preview-main span {
-  background-color: #4a463f;
-}
-
 /* === 外观：缩放滑块 === */
 
 .settings-slider-wrap {
   max-width: 420px;
   padding: 0 6px 8px;
+}
+
+.settings-slider-marks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+/* === 通用：分组（标题 + 若干行） === */
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-group-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-ink-tertiary);
+  user-select: none;
+}
+
+/* === 通用：带后缀的数字输入 === */
+
+.settings-number {
+  position: relative;
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.settings-number input {
+  padding-right: 40px;
+  -moz-appearance: textfield;
+}
+
+/* 隐藏原生数字调节箭头，避免与后缀文字重叠 */
+.settings-number input::-webkit-inner-spin-button,
+.settings-number input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.settings-number-suffix {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--color-text-3);
+  pointer-events: none;
+}
+
+/* === 代理：单选项 === */
+
+.settings-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-text-1);
+  cursor: pointer;
+}
+
+/* === 代理：接口类型复选 === */
+
+.settings-proxy-types {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.settings-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-text-1);
+  cursor: pointer;
+}
+
+.settings-checkbox input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--c-accent);
+  cursor: pointer;
+}
+
+/* === 代理：服务器与身份验证 === */
+
+.settings-proxy-server {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-proxy-sep {
+  font-size: 13px;
+  color: var(--c-ink-tertiary);
+}
+
+.settings-proxy-auth {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 /* === 快捷键 === */
@@ -358,6 +439,77 @@
   color: var(--c-ink-secondary);
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+.settings-shortcuts-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-shortcuts-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--c-accent);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-shortcuts-reset svg {
+  width: 14px;
+  height: 14px;
+}
+
+.settings-shortcut-group {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}
+
+.settings-shortcut-group-title {
+  padding-bottom: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-ink-tertiary);
+}
+
+.settings-shortcut-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 132px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--c-canvas);
+  cursor: pointer;
+}
+
+.settings-shortcut-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.settings-shortcut-btn-recording {
+  border-color: var(--c-accent);
+  background-color: var(--c-accent-faint);
+}
+
+.settings-shortcut-hint {
+  font-size: 12px;
+  color: var(--c-ink-tertiary);
+}
+
+.settings-shortcut-sep {
+  margin: 0 4px;
+  font-size: 12px;
+  color: var(--c-ink-tertiary);
 }
 
 /* === 关于 === */

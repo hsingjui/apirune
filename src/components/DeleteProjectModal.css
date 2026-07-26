@@ -19,6 +19,9 @@
   display: inline-block;
   margin: 0 4px;
   padding: 1px 6px;
+  /* 原生 button 不继承字体且自带边框，需手动对齐正文样式 */
+  border: none;
+  font: inherit;
   border-radius: var(--border-radius-small);
   background-color: var(--color-fill-2);
   color: var(--color-text-1);

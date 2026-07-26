@@ -1,0 +1,37 @@
+.curl-import-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.curl-import-input {
+  min-height: 200px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--color-bg-1);
+  color: var(--color-text-1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+  transition:
+    border-color var(--ease-out),
+    box-shadow var(--ease-out);
+}
+
+.curl-import-input::placeholder {
+  color: var(--color-text-3);
+}
+
+.curl-import-input:focus {
+  outline: none;
+  border-color: rgb(var(--gray-5));
+  box-shadow: 0 0 0 3px var(--c-focus-ring);
+}
+
+.curl-import-error {
+  margin: 0;
+  color: rgb(var(--danger-6));
+  font-size: 12px;
+}
