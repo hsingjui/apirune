@@ -100,6 +100,7 @@ const RESPONSE_COLLAPSE_HEIGHT = 100;
 interface QueryParam {
   key: string;
   value: string;
+  enabled: boolean;
 }
 
 /** 表单行：在键值对之上增加字段类型与 array 多值 */
@@ -125,7 +126,7 @@ interface RequestEditorProps {
   requestName?: string;
   /** 已保存请求所在目录，null 表示根目录 */
   initialFolderId?: string | null;
-  /** 保存成功回调，由父组件同步标签名并刷新接口树 */
+  /** 保存成功回调，由父组件同步标签名并刷新请求树 */
   onSaved?: (request: QuickRequest) => void;
   /** 环境变量变更回调（如响应提取变量后），由父组件重新加载环境列表 */
   onEnvChanged?: () => void;
@@ -133,12 +134,12 @@ interface RequestEditorProps {
 
 /** KeyValueItem[] → 编辑器内部键值对 */
 function toPairs(items?: KeyValueItem[]): QueryParam[] {
-  return (items ?? []).map(({ key, value }) => ({ key, value }));
+  return (items ?? []).map(({ key, value, enabled }) => ({ key, value, enabled: enabled !== false }));
 }
 
 /** 编辑器内部键值对 → 发送用 KeyValueItem[]（过滤空 key） */
 function toItems(pairs: QueryParam[]): KeyValueItem[] {
-  return pairs.filter((pair) => pair.key).map((pair) => ({ ...pair, enabled: true }));
+  return pairs.filter((pair) => pair.key).map((pair) => ({ ...pair }));
 }
 
 /** 编辑器表单行 → 发送用 FormField[]（过滤空 key，array 过滤空值） */
@@ -148,7 +149,7 @@ function toFormFields(rows: FormRow[]): FormField[] {
     .map((row) => ({
       key: row.key,
       value: row.value,
-      enabled: true,
+      enabled: row.enabled,
       ...(row.fieldType && row.fieldType !== "text" ? { fieldType: row.fieldType } : {}),
       ...(row.fieldType === "array" ? { values: (row.values ?? []).filter(Boolean) } : {}),
     }));
@@ -163,6 +164,7 @@ function parseCookiePairs(value: string): QueryParam[] {
       return {
         key: (at === -1 ? pair : pair.slice(0, at)).trim(),
         value: at === -1 ? "" : pair.slice(at + 1).trim(),
+        enabled: true,
       };
     })
     .filter((pair) => pair.key);
@@ -214,12 +216,15 @@ function initBodyText(initial?: ParsedCurl): string {
 function initFormItems(initial?: ParsedCurl): FormRow[] {
   if (initial?.bodyType !== "form-data" && initial?.bodyType !== "x-www-form-urlencoded") return [];
   try {
-    return (JSON.parse(initial.body) as FormField[]).map(({ key, value, fieldType, values }) => ({
-      key,
-      value,
-      ...(fieldType ? { fieldType } : {}),
-      ...(values ? { values } : {}),
-    }));
+    return (JSON.parse(initial.body) as FormField[]).map(
+      ({ key, value, enabled, fieldType, values }) => ({
+        key,
+        value,
+        enabled: enabled !== false,
+        ...(fieldType ? { fieldType } : {}),
+        ...(values ? { values } : {}),
+      }),
+    );
   } catch {
     return [];
   }
@@ -250,6 +255,7 @@ function RequestEditor({
     return extractPathParamNames(initial?.url ?? "").map((name) => ({
       key: name,
       value: saved.find((item) => item.key === name)?.value ?? "",
+      enabled: true,
     }));
   });
   // Cookie 请求头拆为独立的 Cookies 页签编辑，Headers 中不再重复展示
@@ -309,6 +315,7 @@ function RequestEditor({
       return names.map((name) => ({
         key: name,
         value: prev.find((pair) => pair.key === name)?.value ?? "",
+        enabled: true,
       }));
     });
   }, [url]);
@@ -737,7 +744,12 @@ function RequestEditor({
       >
         {activeTab === "Params" ? (
           <>
-            <KeyValueTable title={t("editor.queryParams")} items={params} onChange={setParams} />
+            <KeyValueTable
+              title={t("editor.queryParams")}
+              items={params}
+              onChange={setParams}
+              enableable
+            />
             {pathParams.length > 0 && (
               <PathParamTable items={pathParams} onChange={setPathParams} />
             )}
@@ -749,6 +761,7 @@ function RequestEditor({
             onChange={setHeaders}
             keyPlaceholder={t("editor.headerKey")}
             valuePlaceholder={t("editor.headerValue")}
+            enableable
           />
         ) : activeTab === "Cookies" ? (
           <>
@@ -911,7 +924,15 @@ function RequestEditor({
           </button>
         )}
         {!responseOpen ? null : responseError ? (
-          <pre className="request-response-body request-response-error">{responseError}</pre>
+          <div className="request-response-body request-response-error">
+            <div className="response-error-card" role="alert">
+              <div className="response-error-head">
+                <CircleAlert aria-hidden="true" />
+                <span className="response-error-title">{t("editor.requestFailed")}</span>
+              </div>
+              <pre className="response-error-detail">{responseError}</pre>
+            </div>
+          </div>
         ) : response ? (
           <>
             {responseTab === "Request" ? (
@@ -1116,6 +1137,7 @@ function parseBatch(text: string, separator: string): QueryParam[] {
       return {
         key: (at === -1 ? line : line.slice(0, at)).trim(),
         value: at === -1 ? "" : line.slice(at + 1).trim(),
+        enabled: true,
       };
     })
     .filter((item) => item.key);
@@ -1234,6 +1256,7 @@ function KeyValueTable({
   keyPlaceholder = t("editor.paramKey"),
   valuePlaceholder = t("editor.paramValue"),
   fieldTypes,
+  enableable = false,
 }: {
   title: string;
   items: FormRow[];
@@ -1242,6 +1265,8 @@ function KeyValueTable({
   valuePlaceholder?: string;
   /** 可选的字段类型列表；缺省不显示类型列 */
   fieldTypes?: FormFieldType[];
+  /** 启用发送开关；Params / Headers 使用，表单保留批量选择删除 */
+  enableable?: boolean;
 }) {
   const typed = !!fieldTypes;
   const tableRef = useRef<HTMLDivElement>(null);
@@ -1276,17 +1301,17 @@ function KeyValueTable({
     };
   }, [hoverRow]);
 
-  /** 参数值上回车：聚焦下一行的参数名输入框（末行时即为自动追加的占位行） */
-  const focusNextRowKey = (index: number) => {
+  /** 参数值上回车：聚焦指定行的参数名输入框（末行的下一行即自动追加的占位行） */
+  const focusRowKey = (index: number) => {
     requestAnimationFrame(() => {
-      const inputs = tableRef.current?.querySelectorAll<HTMLInputElement>(
-        '.request-params-row input:not([type="checkbox"])',
-      );
-      inputs?.[(index + 1) * 2]?.focus();
+      const rows = tableRef.current?.querySelectorAll<HTMLDivElement>(".request-params-row");
+      rows?.[index]?.querySelector<HTMLInputElement>('input:not([type="checkbox"])')?.focus();
     });
   };
 
+
   const allSelected = items.length > 0 && selected.size === items.length;
+  const allEnabled = items.length > 0 && items.every((item) => item.enabled !== false);
 
   const toggleRow = (index: number) => {
     const next = new Set(selected);
@@ -1296,6 +1321,11 @@ function KeyValueTable({
   };
 
   const toggleAll = () => {
+    if (enableable) {
+      const enabled = !allEnabled;
+      onChange(items.map((item) => ({ ...item, enabled })));
+      return;
+    }
     setSelected(allSelected ? new Set() : new Set(items.map((_, i) => i)));
   };
 
@@ -1308,7 +1338,7 @@ function KeyValueTable({
   /** 编辑第 index 行；编辑末尾占位行时自动追加为新条目 */
   const patchItem = (index: number, patch: Partial<FormRow>) => {
     if (index === items.length) {
-      onChange([...items, { key: "", value: "", ...patch }]);
+      onChange([...items, { key: "", value: "", enabled: true, ...patch }]);
       return;
     }
     onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -1335,7 +1365,7 @@ function KeyValueTable({
       <div className="request-params-header">
         <h4 className="request-params-title">{title}</h4>
         <div className="request-params-tools">
-          {selected.size > 0 && (
+          {!enableable && selected.size > 0 && (
             <button
               type="button"
               className="request-params-tool request-params-tool-danger"
@@ -1362,9 +1392,9 @@ function KeyValueTable({
           <input
             type="checkbox"
             className="request-params-check"
-            aria-label={t("editor.selectAll")}
+            aria-label={enableable ? t("editor.enableAll") : t("editor.selectAll")}
             disabled={items.length === 0}
-            checked={allSelected}
+            checked={enableable ? allEnabled : allSelected}
             onChange={toggleAll}
           />
           <span>{keyPlaceholder}</span>
@@ -1372,13 +1402,13 @@ function KeyValueTable({
           <span>{valuePlaceholder}</span>
           <span aria-hidden="true" />
         </div>
-        {[...items, { key: "", value: "" }].map((item, index) => {
+        {[...items, { key: "", value: "", enabled: true } as FormRow].map((item, index) => {
           const isPlaceholder = index === items.length;
           const rowType: FormFieldType = item.fieldType ?? "text";
           return (
             <div
               key={index}
-              className={`request-params-row${typed ? " request-params-typed" : ""}${index === hoverRow ? " is-hover" : ""}`}
+              className={`request-params-row${typed ? " request-params-typed" : ""}${isPlaceholder ? " request-params-row-draft" : ""}${enableable && !isPlaceholder && item.enabled === false ? " request-params-row-disabled" : ""}${index === hoverRow ? " is-hover" : ""}`}
               onPointerEnter={(event) => {
                 hoverRowRef.current = event.currentTarget;
                 setHoverRow(index);
@@ -1391,13 +1421,16 @@ function KeyValueTable({
                 <input
                   type="checkbox"
                   className="request-params-check"
-                  aria-label={t("editor.selectRow")}
-                  checked={selected.has(index)}
-                  onChange={() => toggleRow(index)}
+                  aria-label={enableable ? t("editor.enableRow") : t("editor.selectRow")}
+                  checked={enableable ? item.enabled !== false : selected.has(index)}
+                  onChange={() =>
+                    enableable ? patchItem(index, { enabled: item.enabled === false }) : toggleRow(index)
+                  }
                 />
               )}
               <input
-                placeholder={isPlaceholder ? keyPlaceholder : undefined}
+                aria-label={keyPlaceholder}
+                placeholder={isPlaceholder ? t("editor.addParam") : undefined}
                 value={item.key}
                 onChange={(event) => patchItem(index, { key: event.target.value })}
               />
@@ -1488,7 +1521,7 @@ function KeyValueTable({
                 </div>
               ) : (
                 <input
-                  placeholder={isPlaceholder ? valuePlaceholder : undefined}
+                  aria-label={valuePlaceholder}
                   value={item.value}
                   onChange={(event) => patchItem(index, { value: event.target.value })}
                   onKeyDown={
@@ -1497,7 +1530,7 @@ function KeyValueTable({
                       : (event) => {
                           if (event.key === "Enter") {
                             event.preventDefault();
-                            focusNextRowKey(index);
+                            focusRowKey(index + 1);
                           }
                         }
                   }

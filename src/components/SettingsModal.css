@@ -336,7 +336,7 @@
   cursor: pointer;
 }
 
-/* === 代理：接口类型复选 === */
+/* === 代理：请求类型复选 === */
 
 .settings-proxy-types {
   display: flex;

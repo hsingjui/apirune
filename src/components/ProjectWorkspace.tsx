@@ -1,5 +1,4 @@
 import {
-  ArrowLeftRight,
   Cable,
   ChevronDown,
   History,
@@ -16,7 +15,6 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -46,6 +44,9 @@ interface ProjectWorkspaceProps {
   /** 主页搜索深链打开的快捷请求，打开后通过回调清除 */
   initialRequest?: QuickRequest | null;
   onInitialRequestConsumed?: () => void;
+  /** 主页导入 cURL 后带入的初始配置，打开后通过回调清除；空对象为新建空快捷请求 */
+  initialCurl?: ParsedCurl | null;
+  onInitialCurlConsumed?: () => void;
 }
 
 type SectionKey = "apis" | "history" | "settings";
@@ -67,12 +68,12 @@ interface RequestTab {
 
 /** 左侧导航栏条目；labelKey 为文案 key，渲染时翻译 */
 const NAV_ITEMS: { key: SectionKey; labelKey: string; Icon: typeof LayoutGrid }[] = [
-  { key: "apis", labelKey: "workspace.apis", Icon: LayoutGrid },
+  { key: "apis", labelKey: "workspace.requests", Icon: LayoutGrid },
   { key: "history", labelKey: "workspace.history", Icon: History },
   { key: "settings", labelKey: "workspace.projectSettings", Icon: Settings },
 ];
 
-/** 接口管理主区的快捷入口卡片 */
+/** 请求管理主区的快捷入口卡片 */
 const QUICK_ACTIONS: {
   key: string;
   labelKey: string;
@@ -80,13 +81,6 @@ const QUICK_ACTIONS: {
   color: string;
   Icon: typeof LayoutGrid;
 }[] = [
-  {
-    key: "http",
-    labelKey: "workspace.newHttp",
-    descKey: "workspace.newHttpDesc",
-    color: "#cc7c5e",
-    Icon: ArrowLeftRight,
-  },
   {
     key: "quick",
     labelKey: "workspace.quickRequest",
@@ -123,11 +117,13 @@ function formatDateTime(timestamp: number): string {
   });
 }
 
-/** 项目工作区：左侧功能导航 + 接口列表侧栏 + 主内容区，接口调试能力后续接入 */
+/** 项目工作区：左侧功能导航 + 请求列表侧栏 + 主内容区 */
 function ProjectWorkspace({
   project,
   initialRequest,
   onInitialRequestConsumed,
+  initialCurl,
+  onInitialCurlConsumed,
 }: ProjectWorkspaceProps) {
   const { t } = useI18n();
   const [section, setSection] = useState<SectionKey>("apis");
@@ -146,6 +142,8 @@ function ProjectWorkspace({
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
   const [activeEnvId, setActiveEnvId] = useState<string | null>(null);
   const treeRef = useRef<ApiTreeHandle>(null);
+  // 主页导入 cURL 去重：StrictMode 下 effect 重复执行时按引用判重，避免开出两个标签
+  const initialCurlRef = useRef<ParsedCurl | null>(null);
   const activeEnv = environments.find((env) => env.id === activeEnvId) ?? null;
 
   /** 选中环境并持久化到数据库，下次打开项目时恢复 */
@@ -259,17 +257,37 @@ function ProjectWorkspace({
     onInitialRequestConsumed?.();
   }, [initialRequest]);
 
-  // 快捷键：新建快捷请求（仅当前激活项目的工作区挂载，不会重复响应）
-  useShortcutAction("newRequest", () => {
+  // 主页导入 cURL：挂载后创建带初始配置的快捷请求标签页
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 仅在 initialCurl 变化时打开一次
+  useEffect(() => {
+    if (!initialCurl) {
+      initialCurlRef.current = null;
+      return;
+    }
+    if (initialCurlRef.current === initialCurl) return;
+    initialCurlRef.current = initialCurl;
     setSection("apis");
-    addRequestTab();
-  });
+    addRequestTab(initialCurl);
+    onInitialCurlConsumed?.();
+  }, [initialCurl]);
+
+  // 快捷键：请求管理页新建快捷请求
+  useShortcutAction(
+    "newRequest",
+    () => {
+      addRequestTab();
+    },
+    section === "apis",
+  );
 
   // 快捷键：打开 cURL 导入弹窗
-  useShortcutAction("importCurl", () => {
-    setSection("apis");
-    setCurlModalVisible(true);
-  });
+  useShortcutAction(
+    "importCurl",
+    () => {
+      setCurlModalVisible(true);
+    },
+    section === "apis",
+  );
 
   // 快捷键：打开全局搜索
   useShortcutAction("globalSearch", () => setSearchVisible(true));
@@ -284,7 +302,7 @@ function ProjectWorkspace({
     }
   };
 
-  // 快捷键：接口管理页有快捷请求标签打开时，⌘W 关闭当前标签而非项目
+  // 快捷键：请求管理页有快捷请求标签打开时，⌘W 关闭当前标签而非项目
   useCloseTabInterceptor(() => {
     if (section !== "apis" || activeRequestId === null) return false;
     closeRequestTab(activeRequestId);
@@ -314,12 +332,10 @@ function ProjectWorkspace({
     }
     if (key === "import") {
       setOpenapiModalVisible(true);
-      return;
     }
-    toast.info(t("workspace.wip"));
   };
 
-  /** 保存成功：同步标签的 requestId / 名称 / 目录，并刷新接口树 */
+  /** 保存成功：同步标签的 requestId / 名称 / 目录，并刷新请求树 */
   const handleRequestSaved = (tabId: string, request: QuickRequest) => {
     setRequestTabs((tabs) =>
       tabs.map((tab) =>
@@ -382,12 +398,12 @@ function ProjectWorkspace({
         ))}
       </nav>
 
-      {/* 右侧功能容器：接口列表侧栏 + 主内容区 */}
+      {/* 右侧功能容器：请求列表侧栏 + 主内容区 */}
       <div className="workspace-panel">
         {showSidebar && (
           <aside className="workspace-sidebar" style={{ width: sidebarWidth }}>
             <div className="workspace-sidebar-header">
-              <h3 className="workspace-sidebar-title">{t("workspace.apis")}</h3>
+              <h3 className="workspace-sidebar-title">{t("workspace.requests")}</h3>
               <div className="workspace-sidebar-header-actions">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -420,7 +436,7 @@ function ProjectWorkspace({
             <div className="workspace-sidebar-toolbar">
               <Input
                 className="workspace-sidebar-search"
-                placeholder={t("workspace.searchApis")}
+                placeholder={t("workspace.searchRequests")}
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
               />
@@ -445,9 +461,12 @@ function ProjectWorkspace({
                     type="button"
                     role="menuitem"
                     className="workspace-more-menu-item"
-                    onClick={() => toast.info(t("workspace.wip"))}
+                    onClick={() => {
+                      setKeyword("");
+                      treeRef.current?.startCreate("folder");
+                    }}
                   >
-                    {t("workspace.menuApi")}
+                    {t("workspace.newFolder")}
                   </button>
                   <button
                     type="button"

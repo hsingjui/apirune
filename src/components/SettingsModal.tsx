@@ -31,6 +31,7 @@ import {
   DEFAULT_SHORTCUTS,
   formatCombo,
   hasModifier,
+  MOD,
   SHORTCUT_GROUPS,
   SHORTCUT_STORAGE_KEY,
   setShortcutRecording,
@@ -543,11 +544,17 @@ function SettingsModal({ visible, onClose }: SettingsModalProps) {
                             <span className="settings-shortcut-tag">{t("settings.fixedTag")}</span>
                           </span>
                           <span className="settings-shortcut-keys">
-                            <kbd className="settings-kbd">⌘</kbd>
-                            <kbd className="settings-kbd">1</kbd>
+                            {formatCombo(`${MOD}+1`).map((key, i) => (
+                              <kbd key={`goto1-${i}`} className="settings-kbd">
+                                {key}
+                              </kbd>
+                            ))}
                             <span className="settings-shortcut-sep">{t("settings.to")}</span>
-                            <kbd className="settings-kbd">⌘</kbd>
-                            <kbd className="settings-kbd">9</kbd>
+                            {formatCombo(`${MOD}+9`).map((key, i) => (
+                              <kbd key={`goto9-${i}`} className="settings-kbd">
+                                {key}
+                              </kbd>
+                            ))}
                           </span>
                         </div>
                       )}

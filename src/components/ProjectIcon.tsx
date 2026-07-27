@@ -30,7 +30,7 @@ export function ProjectIconBadge({ icon, size = 20, badgeSize = 40 }: ProjectIco
         width: badgeSize,
         height: badgeSize,
         borderRadius: "var(--border-radius-medium)",
-        backgroundColor: `${entry.color}1a`,
+        backgroundColor: `color-mix(in srgb, ${entry.color} 12%, transparent)`,
         flexShrink: 0,
       }}
     >

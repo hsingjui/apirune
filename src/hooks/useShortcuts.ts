@@ -17,6 +17,12 @@ function dispatch(detail: ShortcutEventDetail) {
   window.dispatchEvent(new CustomEvent(SHORTCUT_EVENT, { detail }));
 }
 
+const shortcutHandlerCounts = new Map<ShortcutAction | "gotoTab", number>();
+
+function hasShortcutHandler(action: ShortcutAction | "gotoTab") {
+  return (shortcutHandlerCounts.get(action) ?? 0) > 0;
+}
+
 /**
  * 全局键盘监听，在 App 挂载一次。
  * 基于窗口 keydown 实现：应用在前台（窗口聚焦）时才会收到事件，无需系统级快捷键。
@@ -29,16 +35,19 @@ export function useShortcutListener() {
       if (!config.enabled) return;
       const combo = comboFromEvent(event);
       if (combo == null) return;
-      // 焦点在 CodeMirror 编辑器内时，⌘F / ⌘R 让给编辑器的查找替换，不触发全局动作
+      // 焦点在 CodeMirror 编辑器内时，查找/替换让给编辑器，不触发全局动作
+      // macOS 为 ⌘F/⌘R，其余平台为 Ctrl+F/Ctrl+R
       if (
-        (combo === "meta+f" || combo === "meta+r") &&
+        (combo === "meta+f" || combo === "ctrl+f" || combo === "meta+r" || combo === "ctrl+r") &&
         (event.target as HTMLElement | null)?.closest?.(".cm-editor")
       ) {
         return;
       }
-      // 固定快捷键：⌘1–⌘8 跳转到对应标签页，⌘9 跳转到最后一个
-      const digit = /^meta\+([1-9])$/.exec(combo);
+      // 固定快捷键：主修饰键+1–8 跳转到对应标签页，+9 跳转到最后一个
+      // macOS 为 ⌘1–⌘9，其余平台为 Ctrl+1–Ctrl+9
+      const digit = /^(?:meta|ctrl)\+([1-9])$/.exec(combo);
       if (digit) {
+        if (!hasShortcutHandler("gotoTab")) return;
         event.preventDefault();
         dispatch({ action: "gotoTab", index: Number(digit[1]) });
         return;
@@ -46,7 +55,7 @@ export function useShortcutListener() {
       const entry = (Object.entries(config.bindings) as [ShortcutAction, string][]).find(
         ([, bound]) => bound !== "" && bound === combo,
       );
-      if (!entry) return;
+      if (!entry || !hasShortcutHandler(entry[0])) return;
       event.preventDefault();
       dispatch({ action: entry[0] });
     };
@@ -78,15 +87,23 @@ export const runCloseTabInterceptor = () => closeTabInterceptor?.() ?? false;
 export function useShortcutAction(
   action: ShortcutAction | "gotoTab",
   handler: (index?: number) => void,
+  enabled = true,
 ) {
   const ref = useRef(handler);
   ref.current = handler;
   useEffect(() => {
+    if (!enabled) return;
+    shortcutHandlerCounts.set(action, (shortcutHandlerCounts.get(action) ?? 0) + 1);
     const onShortcut = (event: Event) => {
       const detail = (event as CustomEvent<ShortcutEventDetail>).detail;
       if (detail.action === action) ref.current(detail.index);
     };
     window.addEventListener(SHORTCUT_EVENT, onShortcut);
-    return () => window.removeEventListener(SHORTCUT_EVENT, onShortcut);
-  }, [action]);
+    return () => {
+      const count = shortcutHandlerCounts.get(action) ?? 0;
+      if (count <= 1) shortcutHandlerCounts.delete(action);
+      else shortcutHandlerCounts.set(action, count - 1);
+      window.removeEventListener(SHORTCUT_EVENT, onShortcut);
+    };
+  }, [action, enabled]);
 }

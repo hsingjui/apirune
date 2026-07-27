@@ -1,8 +1,7 @@
 import type { BodyType, HttpMethod, KeyValueItem } from "./request";
 
 /**
- * 快捷请求独立于接口（Folder / ApiRequest）分表存储，
- * 两者格式后续可能分化，字段暂时相同但不复用类型。
+ * 快捷请求独立分表存储，字段后续可能分化。
  */
 
 /** 快捷请求目录，parentId 为 null 表示根级 */

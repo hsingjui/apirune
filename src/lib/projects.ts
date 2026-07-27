@@ -76,26 +76,33 @@ export async function getProject(id: string): Promise<Project | null> {
 
 type MethodCountRow = { project_id: string; method: string; count: number };
 type EnvNameRow = { project_id: string; name: string };
+type LastSentRow = { project_id: string; last_sent_at: number };
 
-/** 各项目的接口方法分布与环境名，键为项目 id */
+/** 各项目的请求方法分布、环境名与最后发送时间，键为项目 id */
 export async function listProjectStats(): Promise<Record<string, ProjectStats>> {
   const db = await getDb();
-  const [methodRows, envRows] = await Promise.all([
+  const [methodRows, envRows, lastSentRows] = await Promise.all([
     db.select<MethodCountRow[]>(
-      "SELECT project_id, method, COUNT(*) AS count FROM requests GROUP BY project_id, method",
+      "SELECT project_id, method, COUNT(*) AS count FROM history GROUP BY project_id, method",
     ),
     db.select<EnvNameRow[]>(
       "SELECT project_id, name FROM environments ORDER BY sort_order ASC, created_at ASC",
     ),
+    db.select<LastSentRow[]>(
+      "SELECT project_id, MAX(created_at) AS last_sent_at FROM history GROUP BY project_id",
+    ),
   ]);
   const stats: Record<string, ProjectStats> = {};
   const ensure = (projectId: string) =>
-    (stats[projectId] ??= { methodCounts: {}, environmentNames: [] });
+    (stats[projectId] ??= { methodCounts: {}, environmentNames: [], lastSentAt: null });
   for (const row of methodRows) {
     ensure(row.project_id).methodCounts[row.method] = row.count;
   }
   for (const row of envRows) {
     ensure(row.project_id).environmentNames.push(row.name);
+  }
+  for (const row of lastSentRows) {
+    if (row.last_sent_at != null) ensure(row.project_id).lastSentAt = row.last_sent_at;
   }
   return stats;
 }

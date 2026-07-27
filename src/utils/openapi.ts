@@ -2,7 +2,7 @@ import { parse as parseYaml } from "yaml";
 import { t } from "../i18n";
 import type { BodyType, FormField, HttpMethod, KeyValueItem } from "../types/request";
 
-/** OpenAPI 文档解析出的单个接口，可直接入库为快捷请求 */
+/** OpenAPI 文档解析出的单个请求，可直接入库为快捷请求 */
 export interface ParsedOperation {
   name: string;
   method: HttpMethod;
@@ -14,7 +14,7 @@ export interface ParsedOperation {
   body: string;
 }
 
-/** 按 tag 分组的接口；name 为 null 表示无 tag 的根级接口 */
+/** 按 tag 分组的请求；name 为 null 表示无 tag 的根级请求 */
 export interface ParsedGroup {
   name: string | null;
   operations: ParsedOperation[];
@@ -204,7 +204,7 @@ function paramExampleValue(doc: Obj, schema: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
-/** 解析单个 operation 为接口配置 */
+/** 解析单个 operation 为请求配置 */
 function parseOperation(
   doc: Obj,
   prefix: string,
@@ -224,7 +224,7 @@ function parseOperation(
     const item: KeyValueItem = {
       key: name,
       value: paramExample(doc, param),
-      enabled: param.required === true,
+      enabled: true,
       ...(typeof param.description === "string" && param.description
         ? { description: param.description }
         : {}),
@@ -287,7 +287,7 @@ function parseOperation(
 
 /**
  * 解析 OpenAPI 3.x / Swagger 2.0 文档（JSON 或 YAML），
- * 按第一个 tag 分组；无 tag 的接口归入 name 为 null 的组。
+ * 按第一个 tag 分组；无 tag 的请求归入 name 为 null 的组。
  */
 export function parseOpenApi(text: string): ParsedOpenApi {
   let doc: unknown;

@@ -29,13 +29,38 @@
   /* 4. Boundaries（沙色边界） */
   --c-border: #e3e0d6;
 
-  /* 5. JSON 语法高亮（深色主题在 [data-theme] 块覆盖） */
+  /* 5. 项目图标色板：OKLCH 等明度/等彩度，仅色相不同 → 视觉天然统一；
+     深色主题组覆盖 --pi-l / --pi-c 提亮，图标色随主题自动切换 */
+  --pi-l: 53%;
+  --pi-c: 0.14;
+  --pi-red: oklch(var(--pi-l) var(--pi-c) 28);
+  --pi-orange: oklch(var(--pi-l) var(--pi-c) 55);
+  --pi-amber: oklch(var(--pi-l) var(--pi-c) 82);
+  --pi-green: oklch(var(--pi-l) var(--pi-c) 140);
+  --pi-teal: oklch(var(--pi-l) var(--pi-c) 175);
+  --pi-cyan: oklch(var(--pi-l) var(--pi-c) 205);
+  --pi-blue: oklch(var(--pi-l) var(--pi-c) 250);
+  --pi-violet: oklch(var(--pi-l) var(--pi-c) 285);
+  --pi-purple: oklch(var(--pi-l) var(--pi-c) 315);
+  --pi-pink: oklch(var(--pi-l) var(--pi-c) 345);
+  --pi-slate: oklch(var(--pi-l) 0.03 250);
+
+  /* 6. JSON 语法高亮（深色主题在 [data-theme] 块覆盖） */
   --json-key: #9c5a42;
   --json-string: #55764c;
   --json-number: #4a6da7;
   --json-bool: #8a5cb8;
   --json-null: var(--c-ink-tertiary);
   --json-invalid: #f53f3f;
+
+  /* 7. 请求方法标识色：低饱和暖调，深色主题在 [data-theme] 块覆盖 */
+  --method-get: #55764c;
+  --method-post: #bf7c3f;
+  --method-put: #4a6da7;
+  --method-patch: #8a5cb8;
+  --method-delete: #c05a4e;
+  --method-head: #4f9a8f;
+  --method-options: #9e9a93;
 
   /* Fonts & Shadows（阴影基色用墨色，不用纯黑） */
   --font-serif:
@@ -118,7 +143,11 @@
   --c-accent-hover: #d88f6f;
   --c-accent-faint: rgba(204, 124, 94, 0.22);
   --c-focus-ring: rgba(232, 230, 221, 0.12);
+  /* shadcn 危险色与深色 --danger-6 对齐，避免亮红 #F53F3F 在深底上刺眼 */
+  --destructive: #e8695a;
   --c-border: #3d3a34;
+  --pi-l: 74%;
+  --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --json-key: #d99e83;
@@ -126,6 +155,13 @@
   --json-number: #8fb3e3;
   --json-bool: #c39ee8;
   --json-invalid: #f0776a;
+  --method-get: #a3c293;
+  --method-post: #d9a06f;
+  --method-put: #8fb3e3;
+  --method-patch: #c39ee8;
+  --method-delete: #d87f72;
+  --method-head: #7fbcb1;
+  --method-options: #7a766d;
 }
 
 [data-theme="dark"] body {
@@ -189,6 +225,8 @@
   --primary-7: 79, 122, 86;
   --primary-8: 64, 104, 69;
   --primary-9: 50, 86, 55;
+  /* 蒙层取主题墨色调，与纸面色系保持一致 */
+  --color-mask-bg: rgba(49, 55, 46, 0.42);
 }
 
 /* --- 海雾（浅色，蓝灰色调） --- */
@@ -226,6 +264,7 @@
   --primary-7: 66, 110, 144;
   --primary-8: 54, 93, 124;
   --primary-9: 42, 76, 103;
+  --color-mask-bg: rgba(44, 53, 64, 0.42);
 }
 
 /* --- 墨岩（深色，冷灰 + 青蓝强调色） --- */
@@ -240,7 +279,10 @@
   --c-accent-hover: #9eb7d9;
   --c-accent-faint: rgba(139, 168, 208, 0.2);
   --c-focus-ring: rgba(226, 229, 233, 0.12);
+  --destructive: #e8695a;
   --c-border: #383c42;
+  --pi-l: 74%;
+  --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --json-key: #dea88e;
@@ -248,6 +290,13 @@
   --json-number: #8fb3e3;
   --json-bool: #c39ee8;
   --json-invalid: #f0776a;
+  --method-get: #a3c293;
+  --method-post: #d9a06f;
+  --method-put: #8fb3e3;
+  --method-patch: #c39ee8;
+  --method-delete: #d87f72;
+  --method-head: #7fbcb1;
+  --method-options: #7a8089;
   /* 浅蓝强调色上用深墨文字保证对比度 */
   --primary-foreground: #1f2126;
 }
@@ -317,6 +366,7 @@
   --primary-7: 109, 92, 156;
   --primary-8: 93, 78, 136;
   --primary-9: 76, 63, 113;
+  --color-mask-bg: rgba(53, 49, 62, 0.42);
 }
 
 /* --- 胭脂（浅色，玫瑰色调） --- */
@@ -358,6 +408,7 @@
   --primary-7: 173, 84, 100;
   --primary-8: 150, 69, 85;
   --primary-9: 125, 55, 70;
+  --color-mask-bg: rgba(60, 50, 52, 0.42);
 }
 
 /* --- 松影（深色，苔绿强调色） --- */
@@ -372,7 +423,10 @@
   --c-accent-hover: #a3c599;
   --c-accent-faint: rgba(146, 184, 136, 0.2);
   --c-focus-ring: rgba(228, 232, 224, 0.12);
+  --destructive: #e8695a;
   --c-border: #383e35;
+  --pi-l: 74%;
+  --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --json-key: #dba184;
@@ -380,6 +434,13 @@
   --json-number: #8fb3e3;
   --json-bool: #c39ee8;
   --json-invalid: #f0776a;
+  --method-get: #a3c293;
+  --method-post: #d9a06f;
+  --method-put: #8fb3e3;
+  --method-patch: #c39ee8;
+  --method-delete: #d87f72;
+  --method-head: #7fbcb1;
+  --method-options: #767e70;
   /* 浅绿强调色上用深墨文字保证对比度 */
   --primary-foreground: #20241f;
 }
@@ -422,7 +483,10 @@
   --c-accent-hover: #c2b2df;
   --c-accent-faint: rgba(179, 161, 214, 0.2);
   --c-focus-ring: rgba(230, 227, 236, 0.12);
+  --destructive: #e8695a;
   --c-border: #3b3744;
+  --pi-l: 74%;
+  --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --json-key: #dea88e;
@@ -430,6 +494,13 @@
   --json-number: #8fb3e3;
   --json-bool: #cfa9ef;
   --json-invalid: #f0776a;
+  --method-get: #a3c293;
+  --method-post: #d9a06f;
+  --method-put: #8fb3e3;
+  --method-patch: #c39ee8;
+  --method-delete: #d87f72;
+  --method-head: #7fbcb1;
+  --method-options: #7d7689;
   /* 浅紫强调色上用深墨文字保证对比度 */
   --primary-foreground: #232028;
 }
@@ -500,6 +571,7 @@
   --primary-7: 74, 146, 156;
   --primary-8: 60, 124, 133;
   --primary-9: 47, 102, 110;
+  --color-mask-bg: rgba(46, 58, 59, 0.42);
 }
 
 /* --- 柘黄（浅色，惊蛰·柘黃 #C67915，底色取白露·凝脂） --- */
@@ -538,6 +610,7 @@
   --primary-7: 170, 106, 18;
   --primary-8: 143, 89, 15;
   --primary-9: 116, 72, 12;
+  --color-mask-bg: rgba(59, 53, 42, 0.42);
 }
 
 /* --- 螺子黛（深色，谷雨·螺子黛 #13393E 化底，强调色取处暑·西子 #87C0CA） --- */
@@ -552,7 +625,10 @@
   --c-accent-hover: #98cdd6;
   --c-accent-faint: rgba(135, 192, 202, 0.2);
   --c-focus-ring: rgba(224, 232, 233, 0.12);
+  --destructive: #e8695a;
   --c-border: #344246;
+  --pi-l: 74%;
+  --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --json-key: #dea88e;
@@ -560,6 +636,13 @@
   --json-number: #8fb3e3;
   --json-bool: #c39ee8;
   --json-invalid: #f0776a;
+  --method-get: #a3c293;
+  --method-post: #d9a06f;
+  --method-put: #8fb3e3;
+  --method-patch: #c39ee8;
+  --method-delete: #d87f72;
+  --method-head: #7fbcb1;
+  --method-options: #71828a;
   /* 浅青强调色上用深墨文字保证对比度 */
   --primary-foreground: #1c2529;
 }

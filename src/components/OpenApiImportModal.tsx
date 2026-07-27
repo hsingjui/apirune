@@ -19,11 +19,11 @@ interface OpenApiImportModalProps {
   visible: boolean;
   projectId: string;
   onCancel: () => void;
-  /** 导入入库完成后回调，由父组件刷新接口树 */
+  /** 导入入库完成后回调，由父组件刷新请求树 */
   onImported: () => void;
 }
 
-/** 将解析结果写入快捷请求表：根目录为文档标题，tag 为子目录，无 tag 的接口挂根目录下 */
+/** 将解析结果写入快捷请求表：根目录为文档标题，tag 为子目录，无 tag 的请求挂根目录下 */
 async function importToQuickTree(projectId: string, parsed: ParsedOpenApi): Promise<void> {
   const root = await createQuickFolder({ projectId, name: parsed.title });
   let folderOrder = 0;
@@ -56,7 +56,7 @@ async function importToQuickTree(projectId: string, parsed: ParsedOpenApi): Prom
   }
 }
 
-/** OpenAPI 导入弹窗：粘贴 OpenAPI 3.x / Swagger 2.0 文档（JSON/YAML），直接导入为接口树 */
+/** OpenAPI 导入弹窗：粘贴 OpenAPI 3.x / Swagger 2.0 文档（JSON/YAML），直接导入为请求树 */
 function OpenApiImportModal({ visible, projectId, onCancel, onImported }: OpenApiImportModalProps) {
   const { t } = useI18n();
   const [text, setText] = useState("");
@@ -72,7 +72,7 @@ function OpenApiImportModal({ visible, projectId, onCancel, onImported }: OpenAp
     }
   }, [visible]);
 
-  /** 解析文档内容并写入接口树；解析失败在弹窗内提示，成功后关闭弹窗 */
+  /** 解析文档内容并写入请求树；解析失败在弹窗内提示，成功后关闭弹窗 */
   const importText = async (content: string) => {
     let parsed: ParsedOpenApi;
     try {

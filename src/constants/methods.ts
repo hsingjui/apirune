@@ -1,15 +1,15 @@
-/** 请求方法及其标识色（取自 Arco 色板，与项目图标用色一致） */
+/** 请求方法及其标识色：低饱和暖调，色值令牌在 global.css 按主题定义 */
 export const METHODS: { value: string; color: string }[] = [
-  { value: "GET", color: "#00b42a" },
-  { value: "POST", color: "#ff7d00" },
-  { value: "PUT", color: "#165dff" },
-  { value: "PATCH", color: "#722ed1" },
-  { value: "DELETE", color: "#f53f3f" },
-  { value: "HEAD", color: "#0fc6c2" },
-  { value: "OPTIONS", color: "#86909c" },
+  { value: "GET", color: "var(--method-get)" },
+  { value: "POST", color: "var(--method-post)" },
+  { value: "PUT", color: "var(--method-put)" },
+  { value: "PATCH", color: "var(--method-patch)" },
+  { value: "DELETE", color: "var(--method-delete)" },
+  { value: "HEAD", color: "var(--method-head)" },
+  { value: "OPTIONS", color: "var(--method-options)" },
 ];
 
 /** 取方法标识色，未知方法用中性灰 */
 export function getMethodColor(method: string): string {
-  return METHODS.find((entry) => entry.value === method)?.color ?? "#86909c";
+  return METHODS.find((entry) => entry.value === method)?.color ?? "var(--c-ink-tertiary)";
 }

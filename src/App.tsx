@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import CreateProjectModal from "./components/CreateProjectModal";
+import CurlImportModal from "./components/CurlImportModal";
 import DeleteProjectModal from "./components/DeleteProjectModal";
 import Home from "./components/Home";
 import ProjectWorkspace from "./components/ProjectWorkspace";
@@ -23,6 +24,7 @@ import {
 import { loadSettings } from "./lib/settings";
 import type { CreateProjectInput, Project } from "./types/project";
 import type { QuickRequest } from "./types/quick";
+import type { ParsedCurl } from "./utils/curl";
 import "./App.css";
 
 function App() {
@@ -40,6 +42,10 @@ function App() {
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   // 主页搜索选中的快捷请求，交由对应项目的工作区打开后清除
   const [pendingRequest, setPendingRequest] = useState<QuickRequest | null>(null);
+  // 主页 cURL 导入 / 快速请求：弹窗状态与带入的初始配置，交由快速请求项目的工作区打开后清除
+  const [homeCurlVisible, setHomeCurlVisible] = useState(false);
+  const [pendingCurl, setPendingCurl] = useState<ParsedCurl | null>(null);
+  const [pendingCurlProjectId, setPendingCurlProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     listProjects()
@@ -153,13 +159,22 @@ function App() {
     setDeleteVisible(true);
   };
 
-  /** 打开内置快速请求项目，首次使用时创建 */
+  /** 打开内置快速请求项目，首次使用时创建，并新建一个空快捷请求标签 */
   const handleQuickRequest = async () => {
     try {
       const project = await ensureScratchProject(t("home.scratchProject"));
       setProjects((prev) =>
         prev.some((item) => item.id === project.id) ? prev : [...prev, project],
       );
+      setPendingCurl({
+        method: "GET",
+        url: "",
+        params: [],
+        headers: [],
+        bodyType: "none",
+        body: "",
+      });
+      setPendingCurlProjectId(project.id);
       handleOpenProject(project.id);
     } catch (error) {
       toast.error(
@@ -174,27 +189,55 @@ function App() {
     handleOpenProject(request.projectId);
   };
 
+  /** 主页「导入请求」：直接打开 cURL 导入弹窗，解析后在快速请求项目中打开 */
+  const openHomeImport = () => setHomeCurlVisible(true);
+
+  /** 主页 cURL 导入解析成功：打开快速请求项目并带入初始配置 */
+  const handleHomeCurlImport = async (parsed: ParsedCurl) => {
+    setHomeCurlVisible(false);
+    try {
+      const project = await ensureScratchProject(t("home.scratchProject"));
+      setProjects((prev) =>
+        prev.some((item) => item.id === project.id) ? prev : [...prev, project],
+      );
+      setPendingCurl(parsed);
+      setPendingCurlProjectId(project.id);
+      handleOpenProject(project.id);
+    } catch (error) {
+      toast.error(
+        t("app.createFailed", { error: error instanceof Error ? error.message : String(error) }),
+      );
+    }
+  };
+
   // 快捷键：应用前台时监听（见 useShortcutListener），可在设置中配置
   useShortcutListener();
-  useShortcutAction("newProject", openCreateModal);
-  useShortcutAction("closeTab", () => {
-    // 工作区有快捷请求标签打开时，优先关闭标签而非项目
-    if (runCloseTabInterceptor()) return;
-    if (activeProject) handleCloseProject(activeProject.id);
-  });
+  useShortcutAction(
+    "closeTab",
+    () => {
+      // 工作区有快捷请求标签打开时，优先关闭标签而非项目
+      if (runCloseTabInterceptor()) return;
+      if (activeProject) handleCloseProject(activeProject.id);
+    },
+    activeProject !== null,
+  );
   const cycleTab = (step: number) => {
     // 主页视为第一个位置，与项目标签一起循环切换
     const ids: (string | null)[] = [null, ...openTabs.map((tab) => tab.id)];
     const current = ids.indexOf(activeProject?.id ?? null);
     setActiveId(ids[(current + step + ids.length) % ids.length]);
   };
-  useShortcutAction("nextTab", () => cycleTab(1));
-  useShortcutAction("prevTab", () => cycleTab(-1));
-  useShortcutAction("gotoTab", (index) => {
-    if (!index) return;
-    const target = index === 9 ? openTabs[openTabs.length - 1] : openTabs[index - 1];
-    if (target) setActiveId(target.id);
-  });
+  useShortcutAction("nextTab", () => cycleTab(1), openTabs.length > 0);
+  useShortcutAction("prevTab", () => cycleTab(-1), openTabs.length > 0);
+  useShortcutAction(
+    "gotoTab",
+    (index) => {
+      if (!index) return;
+      const target = index === 9 ? openTabs[openTabs.length - 1] : openTabs[index - 1];
+      if (target) setActiveId(target.id);
+    },
+    openTabs.length > 0,
+  );
 
   return (
     <div className="app-shell">
@@ -211,6 +254,13 @@ function App() {
             project={activeProject}
             initialRequest={pendingRequest?.projectId === activeProject.id ? pendingRequest : null}
             onInitialRequestConsumed={() => setPendingRequest(null)}
+            initialCurl={
+              pendingCurl && pendingCurlProjectId === activeProject.id ? pendingCurl : null
+            }
+            onInitialCurlConsumed={() => {
+              setPendingCurl(null);
+              setPendingCurlProjectId(null);
+            }}
           />
         ) : (
           <Home
@@ -221,6 +271,7 @@ function App() {
             onDeleteProject={openDeleteModal}
             onReorderProjects={handleReorderProjects}
             onQuickRequest={handleQuickRequest}
+            onImportRequest={openHomeImport}
             onOpenRequest={handleOpenRequest}
           />
         )}
@@ -237,6 +288,11 @@ function App() {
         project={deletingProject}
         onCancel={() => setDeleteVisible(false)}
         onConfirm={handleDeleteProject}
+      />
+      <CurlImportModal
+        visible={homeCurlVisible}
+        onCancel={() => setHomeCurlVisible(false)}
+        onImport={handleHomeCurlImport}
       />
     </div>
   );

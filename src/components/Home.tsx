@@ -1,12 +1,13 @@
-import { Code, Pencil, Plus, Search, Trash2, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Import, Pencil, Plus, Search, Trash2, Zap } from "lucide-react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { METHODS } from "../constants/methods";
+import { getProjectIcon } from "../constants/projectIcons";
 import { useShortcutAction } from "../hooks/useShortcuts";
 import { getLanguage, t, useI18n } from "../i18n";
 import { countHistorySince } from "../lib/history";
 import { listProjectStats, SCRATCH_PROJECT_ID } from "../lib/projects";
-import { formatCombo, loadShortcuts } from "../lib/shortcuts";
+import { formatCombo, isMac, loadShortcuts } from "../lib/shortcuts";
 import type { Project, ProjectStats } from "../types/project";
 import type { QuickRequest } from "../types/quick";
 import type { ShortcutAction } from "../types/shortcuts";
@@ -24,6 +25,8 @@ interface HomeProps {
   onReorderProjects: (ids: string[]) => void;
   /** 打开内置快速请求项目 */
   onQuickRequest: () => void;
+  /** 打开导入请求弹窗：选择 cURL / OpenAPI 方式与目标项目 */
+  onImportRequest: () => void;
   /** 搜索选中快捷请求：打开对应项目并定位到该请求 */
   onOpenRequest: (request: QuickRequest) => void;
 }
@@ -52,6 +55,17 @@ function formatRelativeTime(timestamp: number): string {
   return formatDate(timestamp);
 }
 
+/** 判断时间戳是否属于今天，用于卡片“最后发送”展示 */
+function isToday(timestamp: number): boolean {
+  const date = new Date(timestamp);
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
 /** 卡片入场交错延迟，项目多时封顶避免末尾卡片等待过久 */
 function enterDelay(index: number): string {
   return `${Math.min(index, 10) * 40}ms`;
@@ -77,20 +91,26 @@ function formatToday(): string {
 /** 图例中的方法缩写，与设计稿一致 */
 const METHOD_SHORT: Record<string, string> = { DELETE: "DEL", OPTIONS: "OPT" };
 
-const EMPTY_STATS: ProjectStats = { methodCounts: {}, environmentNames: [] };
+const EMPTY_STATS: ProjectStats = { methodCounts: {}, environmentNames: [], lastSentAt: null };
 
 /** 卡片上最多展示的环境徽章数，超出折叠为 +N */
 const MAX_ENV_BADGES = 2;
 
 /** 搜索框快捷键提示，按平台区分修饰键 */
-const SEARCH_KBD = navigator.platform.toUpperCase().includes("MAC") ? "⌘ K" : "Ctrl K";
+const SEARCH_KBD = isMac() ? "⌘ K" : "Ctrl K";
 
-/** 主页展示的常用快捷键，按使用频率排列 */
+/** 主页展示的常用快捷键，按分组与使用频率排列：与设置页分组顺序一致 */
 const HOME_SHORTCUTS: ShortcutAction[] = [
   "globalSearch",
+  "newProject",
   "newRequest",
   "sendRequest",
-  "newProject",
+  "saveRequest",
+  "importCurl",
+  "closeTab",
+  "nextTab",
+  "prevTab",
+  "refresh",
   "openSettings",
 ];
 
@@ -100,7 +120,9 @@ function Home({
   onCreateProject,
   onEditProject,
   onDeleteProject,
-  onReorderProjects,  onQuickRequest,
+  onReorderProjects,
+  onQuickRequest,
+  onImportRequest,
   onOpenRequest,
 }: HomeProps) {
   useI18n();
@@ -114,6 +136,7 @@ function Home({
 
   // 主页与工作区互斥挂载，快捷键不会重复响应
   useShortcutAction("globalSearch", () => setSearchVisible(true));
+  useShortcutAction("newProject", onCreateProject);
 
   // 内置快速请求项目不在网格与统计中展示
   const visibleProjects = projects.filter((project) => project.id !== SCRATCH_PROJECT_ID);
@@ -203,129 +226,147 @@ function Home({
             <span className="home-quick-desc">{t("home.quickRequestDesc")}</span>
           </span>
         </button>
+        <button type="button" className="home-quick-card home-quick-card-import" onClick={onImportRequest}>
+          <span className="home-quick-icon">
+            <Import />
+          </span>
+          <span className="home-quick-text">
+            <span className="home-quick-title">{t("home.importRequest")}</span>
+            <span className="home-quick-desc">{t("home.importRequestDesc")}</span>
+          </span>
+        </button>
       </div>
 
-      {visibleProjects.length === 0 ? (
-        <div className="home-empty">
-          <span className="home-empty-badge">
-            <Code />
-          </span>
-          <h2 className="home-empty-title">{t("home.emptyTitle")}</h2>
-          <p className="home-empty-desc">{t("home.emptyDesc")}</p>
-          <Button size="lg" onClick={onCreateProject}>
-            <Plus />
-            {t("home.newProject")}
-          </Button>
-        </div>
-      ) : (
-        <div className="home-cols">
-          <section className="home-main">
-            <div className="home-section-head">
-              <h2 className="home-section-title">{t("home.myProjects")}</h2>
-              <span className="home-section-count">{visibleProjects.length}</span>
-            </div>
-            <div className="home-grid">
-              {visibleProjects.map((project, index) => {
-                const projectStats = stats[project.id] ?? EMPTY_STATS;
-                // 按固定方法顺序取有数据的分段，未知方法不进分布条但计入总数
-                const segments = METHODS.map((method) => ({
-                  ...method,
-                  count: projectStats.methodCounts[method.value] ?? 0,
-                })).filter((segment) => segment.count > 0);
-                const total = Object.values(projectStats.methodCounts).reduce((a, b) => a + b, 0);
-                const envNames = projectStats.environmentNames;
-                return (
-                  <div
-                    key={project.id}
-                    role="button"
-                    tabIndex={0}
-                    className={`project-card${draggingId === project.id ? " project-card-dragging" : ""}${
-                      dropId === project.id ? " project-card-drop" : ""
-                    }`}
-                    style={{ animationDelay: enterDelay(index) }}
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData(DRAG_PROJECT_TYPE, project.id);
-                      event.dataTransfer.effectAllowed = "move";
-                      setDraggingId(project.id);
-                    }}
-                    onDragEnd={() => {
-                      setDraggingId(null);
-                      setDropId(null);
-                    }}
-                    onDragOver={(event) => {
-                      if (!event.dataTransfer.types.includes(DRAG_PROJECT_TYPE)) return;
+      <div className="home-cols">
+        <section className="home-main">
+          <div className="home-section-head">
+            <h2 className="home-section-title">{t("home.myProjects")}</h2>
+            <span className="home-section-count">{visibleProjects.length}</span>
+          </div>
+          <div className="home-grid">
+            {visibleProjects.map((project, index) => {
+              const projectStats = stats[project.id] ?? EMPTY_STATS;
+              // 按固定方法顺序取有数据的分段，未知方法不进分布条但计入总数
+              const segments = METHODS.map((method) => ({
+                ...method,
+                count: projectStats.methodCounts[method.value] ?? 0,
+              })).filter((segment) => segment.count > 0);
+              const total = Object.values(projectStats.methodCounts).reduce((a, b) => a + b, 0);
+              const envNames = projectStats.environmentNames;
+              return (
+                <div
+                  key={project.id}
+                  role="button"
+                  tabIndex={0}
+                  className={`project-card${draggingId === project.id ? " project-card-dragging" : ""}${
+                    dropId === project.id ? " project-card-drop" : ""
+                  }`}
+                  style={
+                    {
+                      animationDelay: enterDelay(index),
+                      "--card-accent": getProjectIcon(project.icon).color,
+                    } as CSSProperties
+                  }
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData(DRAG_PROJECT_TYPE, project.id);
+                    event.dataTransfer.effectAllowed = "move";
+                    setDraggingId(project.id);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingId(null);
+                    setDropId(null);
+                  }}
+                  onDragOver={(event) => {
+                    if (!event.dataTransfer.types.includes(DRAG_PROJECT_TYPE)) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    setDropId(project.id);
+                  }}
+                  onDragLeave={(event) => {
+                    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+                    setDropId((prev) => (prev === project.id ? null : prev));
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    dropOnProject(project.id);
+                  }}
+                  onClick={() => onOpenProject(project.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      event.dataTransfer.dropEffect = "move";
-                      setDropId(project.id);
-                    }}
-                    onDragLeave={(event) => {
-                      if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-                      setDropId((prev) => (prev === project.id ? null : prev));
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      dropOnProject(project.id);
-                    }}
-                    onClick={() => onOpenProject(project.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        onOpenProject(project.id);
-                      }
-                    }}
-                  >
-                    <div className="project-card-actions">
-                      <button
-                        type="button"
-                        className="project-card-action"
-                        title={t("home.rename")}
-                        aria-label={`${t("home.rename")} ${project.name}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onEditProject(project);
-                        }}
-                      >
-                        <Pencil />
-                      </button>
-                      <button
-                        type="button"
-                        className="project-card-action project-card-action-danger"
-                        title={t("common.delete")}
-                        aria-label={`${t("common.delete")} ${project.name}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onDeleteProject(project);
-                        }}
-                      >
-                        <Trash2 />
-                      </button>
-                    </div>
-                    <ProjectIconBadge icon={project.icon} size={24} badgeSize={48} />
-                    <span className="project-card-name">{project.name}</span>
-                    <div className="project-card-mbar" aria-hidden="true">
-                      {segments.map((segment) => (
-                        <span
-                          key={segment.value}
-                          style={{
-                            width: `${(segment.count / total) * 100}%`,
-                            backgroundColor: segment.color,
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <div className="project-card-legend">
-                      {segments.map((segment) => (
-                        <span key={segment.value} className="project-card-legend-item">
-                          <i style={{ backgroundColor: segment.color }} />
-                          {METHOD_SHORT[segment.value] ?? segment.value}
-                          <b>{segment.count}</b>
-                        </span>
-                      ))}
-                      <span className="project-card-legend-total">
-                        {t("home.totalRequests", { n: total })}
+                      onOpenProject(project.id);
+                    }
+                  }}
+                >
+                  <div className="project-card-actions">
+                    <button
+                      type="button"
+                      className="project-card-action"
+                      title={t("home.rename")}
+                      aria-label={`${t("home.rename")} ${project.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onEditProject(project);
+                      }}
+                    >
+                      <Pencil />
+                    </button>
+                    <button
+                      type="button"
+                      className="project-card-action project-card-action-danger"
+                      title={t("common.delete")}
+                      aria-label={`${t("common.delete")} ${project.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onDeleteProject(project);
+                      }}
+                    >
+                      <Trash2 />
+                    </button>
+                  </div>
+                  <div className="project-card-head">
+                    <ProjectIconBadge icon={project.icon} size={20} badgeSize={42} />
+                    <div className="project-card-heading">
+                      <span className="project-card-name">{project.name}</span>
+                      <span className="project-card-time">
+                        {projectStats.lastSentAt && isToday(projectStats.lastSentAt)
+                          ? t("home.lastSentAt", { time: formatRelativeTime(projectStats.lastSentAt) })
+                          : t("home.notSentToday")}
                       </span>
                     </div>
+                  </div>
+                  {total > 0 ? (
+                    <div className="project-card-stats">
+                      <div className="project-card-mbar" aria-hidden="true">
+                        {segments.map((segment) => (
+                          <span
+                            key={segment.value}
+                            style={{ flexGrow: segment.count, backgroundColor: segment.color }}
+                          />
+                        ))}
+                      </div>
+                      <div className="project-card-legend">
+                        {segments.map((segment) => (
+                          <span key={segment.value} className="project-card-legend-item">
+                            <i style={{ backgroundColor: segment.color }} />
+                            {METHOD_SHORT[segment.value] ?? segment.value}
+                            <b>{segment.count}</b>
+                          </span>
+                        ))}
+                        <span className="project-card-legend-total">
+                          {t("home.totalRequests", { n: total })}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="project-card-nodata">
+                      <i />
+                      <span>{t("home.noRequests")}</span>
+                      <i />
+                    </div>
+                  )}
+                  {envNames.length > 0 && (
                     <div className="project-card-foot">
                       {envNames.slice(0, MAX_ENV_BADGES).map((name, envIndex) => (
                         <span key={`${name}-${envIndex}`} className="project-card-env">
@@ -333,53 +374,48 @@ function Home({
                         </span>
                       ))}
                       {envNames.length > MAX_ENV_BADGES && (
-                        <span className="project-card-env">
-                          +{envNames.length - MAX_ENV_BADGES}
-                        </span>
+                        <span className="project-card-env">+{envNames.length - MAX_ENV_BADGES}</span>
                       )}
-                      <span className="project-card-date">
-                        {t("home.editedAt", { time: formatRelativeTime(project.updatedAt) })}
-                      </span>
                     </div>
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              );
+            })}
 
-              <button
-                type="button"
-                className="project-card project-card-create"
-                style={{ animationDelay: enterDelay(visibleProjects.length) }}
-                onClick={onCreateProject}
-              >
-                <span className="project-card-create-icon">
-                  <Plus />
-                </span>
-                <span className="project-card-create-text">{t("home.newProject")}</span>
-              </button>
+            <button
+              type="button"
+              className="project-card project-card-create"
+              style={{ animationDelay: enterDelay(visibleProjects.length) }}
+              onClick={onCreateProject}
+            >
+              <span className="project-card-create-icon">
+                <Plus />
+              </span>
+              <span className="project-card-create-text">{t("home.newProject")}</span>
+            </button>
+          </div>
+        </section>
+
+        {shortcutEntries.length > 0 && (
+          <aside className="home-rail">
+            <div className="home-section-head">
+              <h2 className="home-section-title">{t("settings.shortcuts")}</h2>
             </div>
-          </section>
-
-          {shortcutEntries.length > 0 && (
-            <aside className="home-rail">
-              <div className="home-section-head">
-                <h2 className="home-section-title">{t("settings.shortcuts")}</h2>
-              </div>
-              <div className="home-shortcuts-card">
-                {shortcutEntries.map(({ action, keys }) => (
-                  <div key={action} className="home-shortcut">
-                    <span className="home-shortcut-name">{t(`shortcuts.${action}`)}</span>
-                    <span className="home-shortcut-keys">
-                      {keys.map((key, index) => (
-                        <kbd key={`${key}-${index}`}>{key}</kbd>
-                      ))}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </aside>
-          )}
-        </div>
-      )}
+            <div className="home-shortcuts-card">
+              {shortcutEntries.map(({ action, keys }) => (
+                <div key={action} className="home-shortcut">
+                  <span className="home-shortcut-name">{t(`shortcuts.${action}`)}</span>
+                  <span className="home-shortcut-keys">
+                    {keys.map((key, index) => (
+                      <kbd key={`${key}-${index}`}>{key}</kbd>
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </aside>
+        )}
+      </div>
 
       <HomeSearchModal
         visible={searchVisible}

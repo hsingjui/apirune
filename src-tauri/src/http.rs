@@ -253,6 +253,24 @@ fn has_content_type(headers: &[KeyValueItem]) -> bool {
     enabled_items(headers).any(|h| h.key.eq_ignore_ascii_case("content-type"))
 }
 
+/// 将 reqwest 错误展开为可读字符串。reqwest 的 `Display` 只输出顶层摘要
+/// （如 "builder error"、"error sending request"），真正的原因藏在 `source()`
+/// 链里，需逐层拼接，否则前端只能看到无信息的 "builder error"。
+fn reqwest_error_string(err: reqwest::Error) -> String {
+    use std::error::Error as StdError;
+    let mut msg = err.to_string();
+    let mut current = err.source();
+    while let Some(cause) = current {
+        let cause_str = cause.to_string();
+        if !cause_str.is_empty() && !msg.ends_with(cause_str.as_str()) {
+            msg.push_str(": ");
+            msg.push_str(&cause_str);
+        }
+        current = cause.source();
+    }
+    msg
+}
+
 /// Client 级基础配置（证书校验 / 重定向策略）
 fn base_builder(ssl_verify: bool, follow_redirects: bool) -> reqwest::ClientBuilder {
     let mut builder = reqwest::Client::builder().danger_accept_invalid_certs(!ssl_verify);
@@ -514,7 +532,7 @@ pub async fn send_http_request(
     }
 
     // 先构建请求，记录实际发出的方法 / URL / 请求头（Host、Cookie 等由底层追加的头不含在内）
-    let request = builder.build().map_err(|e| e.to_string())?;
+    let request = builder.build().map_err(reqwest_error_string)?;
     let request_method = request.method().to_string();
     let request_url = request.url().to_string();
     let mut request_headers = BTreeMap::new();
@@ -532,7 +550,7 @@ pub async fn send_http_request(
     // 发送并计时；带 request_id 时与取消信号竞争，前端取消即中断请求
     let started = Instant::now();
     let fut = async move {
-        let mut response = client.execute(request).await.map_err(|e| e.to_string())?;
+        let mut response = client.execute(request).await.map_err(reqwest_error_string)?;
         let status = response.status();
 
         let mut headers = BTreeMap::new();
@@ -554,7 +572,7 @@ pub async fn send_http_request(
         let bytes: Vec<u8> = if is_event_stream {
             stream_sse_body(&mut response, &on_sse, &request_url).await
         } else {
-            response.bytes().await.map_err(|e| e.to_string())?.into()
+            response.bytes().await.map_err(reqwest_error_string)?.into()
         };
         let duration_ms = started.elapsed().as_millis() as u64;
 

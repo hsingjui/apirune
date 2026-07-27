@@ -29,7 +29,7 @@ export interface FormField {
   values?: string[];
 }
 
-/** 接口目录，parentId 为 null 表示根级 */
+/** 请求目录，parentId 为 null 表示根级 */
 export interface Folder {
   id: string;
   projectId: string;

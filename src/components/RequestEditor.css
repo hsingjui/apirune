@@ -296,9 +296,9 @@
 .request-params-table {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--color-neutral-3);
+  border: 1px solid var(--c-border);
   border-radius: var(--border-radius-medium);
-  background-color: var(--color-bg-1);
+  background-color: var(--c-surface-high);
   overflow: hidden;
 }
 
@@ -311,9 +311,10 @@
 }
 
 .request-params-head {
-  padding: 8px;
-  border-bottom: 1px solid var(--color-neutral-3);
-  color: var(--color-text-3);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--c-border);
+  background-color: var(--c-surface);
+  color: var(--c-ink-tertiary);
   font-size: 12px;
 }
 
@@ -323,8 +324,14 @@
 }
 
 .request-params-row {
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--color-neutral-3);
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--c-border);
+  background-color: transparent;
+  transition: background-color var(--ease-out);
+}
+
+/* 整行悬停泛浅灰，与浮现的白色输入框形成层次（is-hover 由 JS pointer 事件驱动） */
+.request-params-row.is-hover {
   background-color: var(--c-surface);
 }
 
@@ -332,13 +339,75 @@
   border-bottom: none;
 }
 
-/* 多选框：行首 / 表头全选共用 */
-.request-params-check {
+/* 未启用的 Params / Headers 不参与发送；以浅灰底色和弱化文字区分 */
+.request-params-row.request-params-row-disabled {
+  background-color: var(--color-bg-2);
+}
+
+.request-params-row.request-params-row-disabled input:not([type="checkbox"]) {
+  color: var(--color-text-3);
+}
+
+/* 勾选框由 CSS 绘制，避免 macOS 原生控件在窗口失焦时切换为非活跃样式 */
+.request-params-head .request-params-check,
+.request-params-row .request-params-check {
+  display: grid;
   width: 14px;
   height: 14px;
   margin: 0 auto;
-  accent-color: var(--c-accent);
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  place-content: center;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: 3px;
+  background-color: var(--color-bg-1);
+  color: var(--color-bg-1);
   cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    border-color var(--ease-out),
+    box-shadow var(--ease-out);
+}
+
+.request-params-check::before {
+  width: 7px;
+  height: 4px;
+  content: "";
+  border: solid currentColor;
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg) scale(0);
+  transition: transform var(--ease-out);
+}
+
+/* 选中态以描边 + 浅底 + 焦陶对勾呈现，比实心填充更轻 */
+.request-params-check:checked {
+  border-color: var(--c-accent);
+  background-color: var(--c-accent-faint);
+  color: var(--c-accent);
+}
+
+.request-params-check:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+
+.request-params-row .request-params-check:hover,
+.request-params-row .request-params-check:focus {
+  outline: none;
+  border-color: var(--c-accent);
+  background-color: var(--color-bg-1);
+  box-shadow: none;
+}
+
+.request-params-row .request-params-check:checked:hover,
+.request-params-row .request-params-check:checked:focus {
+  border-color: var(--c-accent-hover);
+  background-color: var(--c-accent-faint);
+}
+
+.request-params-check:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--c-accent-faint);
 }
 
 .request-params-check:disabled {
@@ -362,6 +431,12 @@
 
 .request-params-row input::placeholder {
   color: var(--color-text-3);
+}
+
+/* 末尾占位行「添加参数」提示：比常规 placeholder 更淡，避免与已填写内容混淆 */
+.request-params-row-draft input::placeholder {
+  color: var(--c-ink-tertiary);
+  opacity: 0.55;
 }
 
 /* 悬停：输入框从灰底行中浮现 */
@@ -1223,25 +1298,30 @@ body.is-response-resizing {
   color: var(--c-accent);
 }
 
+/* 响应体视图切换：分段控件，选中项浮起于灰色轨道之上 */
 .response-views {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   margin-left: auto;
+  padding: 2px;
+  border-radius: 9999px;
+  background-color: var(--color-fill-2);
 }
 
 .response-view {
-  padding: 2px 10px;
-  border: 1px solid var(--color-neutral-3);
+  padding: 3px 10px;
+  border: none;
   border-radius: 9999px;
-  background-color: var(--color-bg-1);
+  background-color: transparent;
   color: var(--c-ink-secondary);
   font-size: 11px;
+  line-height: 1.4;
   cursor: pointer;
   transition:
     color var(--ease-out),
-    border-color var(--ease-out),
-    background-color var(--ease-out);
+    background-color var(--ease-out),
+    box-shadow var(--ease-out);
 }
 
 .response-view:hover {
@@ -1250,9 +1330,9 @@ body.is-response-resizing {
 
 .response-view-active,
 .response-view-active:hover {
-  border-color: var(--c-accent);
-  background-color: var(--c-accent-faint);
+  background-color: var(--color-bg-1);
   color: var(--c-accent);
+  box-shadow: var(--shadow-subtle);
 }
 
 .request-response-body {
@@ -1273,8 +1353,46 @@ body.is-response-resizing {
   animation: fade-slide-up 0.2s ease-out;
 }
 
+/* 请求失败：容器背景透明，仅保留内边距，避免与错误卡片叠出多余色层 */
 .request-response-error {
+  background-color: transparent;
+  white-space: normal;
+}
+
+.response-error-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgb(var(--danger-6) / 0.3);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background-color: rgb(var(--danger-1));
   color: rgb(var(--danger-6));
+}
+
+.response-error-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.response-error-head svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.response-error-detail {
+  margin: 0;
+  color: rgb(var(--danger-6) / 0.9);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 无响应时展开的空白内容区 */

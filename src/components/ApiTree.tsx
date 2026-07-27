@@ -1,21 +1,21 @@
 import {
-  ArrowLeftRight,
-  ChevronRight,
+  FilePlus2,
   Folder as FolderIcon,
   FolderOpen as FolderOpenIcon,
   MoreHorizontal,
   Plus,
-  Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getMethodColor } from "../constants/methods";
 import { useI18n } from "../i18n";
 import {
   createQuickFolder,
   createQuickRequest,
+  deleteQuickFolder,
   deleteQuickRequest,
   listQuickFolders,
   listQuickRequests,
@@ -47,9 +47,8 @@ interface ApiTreeProps {
 }
 
 /**
- * 接口管理侧栏树：固定「接口」「快捷请求」两个分组。
- * 接口分组暂未开放；快捷请求分组下目录可嵌套、目录下挂请求，
- * 根级与目录内均可新建，请求可拖拽移动到目录或根级。
+ * 请求管理侧栏树：目录可嵌套、目录下挂请求，根级与目录内均可新建，
+ * 请求可拖拽移动到目录或根级。
  */
 const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
   { projectId, keyword, onOpenRequest, onRenamed },
@@ -58,12 +57,9 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
   const { t } = useI18n();
   const [folders, setFolders] = useState<QuickFolder[]>([]);
   const [requests, setRequests] = useState<QuickRequest[]>([]);
-  // 两个固定分组的展开状态
-  const [apisOpen, setApisOpen] = useState(true);
-  const [quickOpen, setQuickOpen] = useState(true);
   // 记录被收起的目录 id，默认全部展开
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  // 行内新建状态：type 为新建类型，parentId 为 null 表示快捷请求根级
+  // 行内新建状态：type 为新建类型，parentId 为 null 表示请求树根级
   const [creating, setCreating] = useState<{
     type: CreateType;
     parentId: string | null;
@@ -71,7 +67,7 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
   const [draftName, setDraftName] = useState("");
   // 行内重命名状态：双击请求行触发
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
-  // 当前拖拽悬停的放置目标：目录 id，或 "quick-root" 表示快捷请求根级
+  // 当前拖拽悬停的放置目标：目录 id，或 "quick-root" 表示请求树根级
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   const reload = () => {
@@ -88,7 +84,6 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
   const beginCreate = (type: CreateType, parentId: string | null) => {
     setCreating({ type, parentId });
     setDraftName("");
-    setQuickOpen(true);
     // 在目录内新建时确保该目录展开
     if (parentId !== null) {
       setCollapsed((prev) => {
@@ -200,7 +195,7 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
     return map;
   }, [requests]);
 
-  /** 目录 / 分组头共用的放置目标事件；folderId 为 null 表示快捷请求根级 */
+  /** 目录 / 请求树根级共用的放置目标事件；folderId 为 null 表示根级 */
   const dropHandlers = (targetKey: string, folderId: string | null) => ({
     onDragOver: (event: React.DragEvent) => {
       if (!event.dataTransfer.types.includes(DRAG_REQUEST_TYPE)) return;
@@ -253,6 +248,26 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
       console.error("删除快捷请求失败", error);
       toast.error(t("apiTree.deleteFailed"));
     }
+  };
+
+  /** 删除目录及其子目录和其中的快捷请求 */
+  const removeFolder = async (folder: QuickFolder) => {
+    try {
+      await deleteQuickFolder(folder.id);
+      reload();
+    } catch (error) {
+      console.error("删除快捷请求目录失败", error);
+      toast.error(t("apiTree.deleteFailed"));
+    }
+  };
+
+  const confirmRemoveFolder = (folder: QuickFolder) => {
+    toast(t("apiTree.deleteFolderConfirm", { name: folder.name }), {
+      action: {
+        label: t("common.delete"),
+        onClick: () => void removeFolder(folder),
+      },
+    });
   };
 
   const renderRequest = (request: QuickRequest, depth: number) => {
@@ -386,7 +401,12 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
     );
 
   /** 行尾悬停出现的新建入口：菜单复用 workspace-more 悬停展开样式 */
-  const renderAddMenu = (parentId: string | null, label: string, folderLabel: string) => (
+  const renderAddMenu = (
+    parentId: string | null,
+    label: string,
+    folderLabel: string,
+    onDelete?: () => void,
+  ) => (
     <div className="workspace-more workspace-tree-add" onClick={(event) => event.stopPropagation()}>
       <button
         type="button"
@@ -417,6 +437,16 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
         >
           {folderLabel}
         </button>
+        {onDelete && (
+          <button
+            type="button"
+            role="menuitem"
+            className="workspace-more-menu-item"
+            onClick={onDelete}
+          >
+            {t("common.delete")}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -450,6 +480,7 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
             folder.id,
             t("apiTree.addInFolder", { name: folder.name }),
             t("apiTree.newSubfolder"),
+            () => confirmRemoveFolder(folder),
           )}
         </div>
         {isOpen && (
@@ -488,62 +519,36 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
 
   const rootFolders = foldersByParent.get(null) ?? [];
   const rootRequests = requestsByFolder.get(null) ?? [];
-  const quickEmpty = folders.length === 0 && requests.length === 0 && !creating;
+  const treeEmpty = folders.length === 0 && requests.length === 0 && !creating;
 
   return (
-    <div className="workspace-sidebar-tree">
-      {/* 接口分组：暂未开放 */}
-      <div
-        role="button"
-        tabIndex={0}
-        className="workspace-tree-row workspace-tree-section"
-        onClick={() => setApisOpen((open) => !open)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            setApisOpen((open) => !open);
-          }
-        }}
-      >
-        <ChevronRight
-          className={`workspace-tree-chevron${apisOpen ? " workspace-tree-chevron-open" : ""}`}
-        />
-        <ArrowLeftRight className="workspace-tree-section-icon" />
-        <span className="workspace-tree-name">{t("apiTree.sectionApis")}</span>
-      </div>
-      {apisOpen && <p className="workspace-tree-hint">{t("apiTree.comingSoon")}</p>}
-
-      {/* 快捷请求分组 */}
-      <div
-        role="button"
-        tabIndex={0}
-        className={`workspace-tree-row workspace-tree-section${dropTarget === "quick-root" ? " workspace-tree-drop" : ""}`}
-        onClick={() => setQuickOpen((open) => !open)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            setQuickOpen((open) => !open);
-          }
-        }}
-        {...dropHandlers("quick-root", null)}
-      >
-        <ChevronRight
-          className={`workspace-tree-chevron${quickOpen ? " workspace-tree-chevron-open" : ""}`}
-        />
-        <Zap className="workspace-tree-section-icon" />
-        <span className="workspace-tree-name">{t("apiTree.sectionQuick")}</span>
-        {renderAddMenu(null, t("apiTree.addInQuick"), t("apiTree.newFolder"))}
-      </div>
-      {quickOpen &&
-        (quickEmpty ? (
-          <p className="workspace-tree-hint">{t("apiTree.emptyHint")}</p>
-        ) : (
-          <>
-            {rootFolders.map((folder) => renderFolder(folder, 1))}
-            {rootRequests.map((request) => renderRequest(request, 1))}
-            {creating?.parentId === null && renderCreateRow(1)}
-          </>
-        ))}
+    <div
+      className={`workspace-sidebar-tree${dropTarget === "quick-root" ? " workspace-tree-drop" : ""}`}
+      {...dropHandlers("quick-root", null)}
+    >
+      {treeEmpty ? (
+        <div className="workspace-sidebar-empty">
+          <span className="workspace-sidebar-empty-icon">
+            <FilePlus2 size={18} />
+          </span>
+          <p className="workspace-sidebar-empty-text">{t("apiTree.emptyHint")}</p>
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            onClick={() => beginCreate("request", null)}
+          >
+            <Plus />
+            {t("apiTree.newRequest")}
+          </Button>
+        </div>
+      ) : (
+        <>
+          {rootFolders.map((folder) => renderFolder(folder, 0))}
+          {rootRequests.map((request) => renderRequest(request, 0))}
+          {creating?.parentId === null && renderCreateRow(0)}
+        </>
+      )}
     </div>
   );
 });

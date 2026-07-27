@@ -1,4 +1,4 @@
-/* 项目工作区：左侧功能导航 + 接口列表侧栏 + 主内容区 */
+/* 项目工作区：左侧功能导航 + 请求列表侧栏 + 主内容区 */
 
 .workspace {
   display: flex;
@@ -38,6 +38,7 @@
 }
 
 .workspace-rail-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -60,10 +61,23 @@
   color: var(--c-ink-primary);
 }
 
+/* 选中态：中性浅底 + 焦陶文字，左侧以指示条点睛 */
 .workspace-rail-item-active,
 .workspace-rail-item-active:hover {
-  background-color: var(--c-accent-faint);
+  background-color: rgba(56, 53, 47, 0.05);
   color: var(--c-accent);
+}
+
+.workspace-rail-item-active::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  width: 3px;
+  height: 24px;
+  border-radius: 2px;
+  background-color: var(--c-accent);
+  transform: translateY(-50%);
 }
 
 .workspace-rail-label {
@@ -71,7 +85,7 @@
   line-height: 1;
 }
 
-/* === 接口列表侧栏 === */
+/* === 请求列表侧栏 === */
 
 .workspace-sidebar {
   position: relative;
@@ -337,7 +351,7 @@ body.is-sidebar-resizing {
   transform-origin: top right;
 }
 
-/* === 接口树 === */
+/* === 请求树 === */
 
 .workspace-tree-row {
   display: flex;
@@ -429,27 +443,7 @@ body.is-sidebar-resizing {
   height: 14px;
 }
 
-/* 固定分组行（接口 / 快捷请求） */
-.workspace-tree-section .workspace-tree-name {
-  font-weight: 500;
-}
-
-.workspace-tree-section-icon {
-  flex-shrink: 0;
-  width: 15px;
-  height: 15px;
-  color: var(--c-ink-secondary);
-}
-
-/* 分组内的提示文案（接口待开放 / 快捷请求为空） */
-.workspace-tree-hint {
-  margin: 2px 0 6px;
-  padding-left: 44px;
-  font-size: 12px;
-  color: var(--c-ink-tertiary);
-}
-
-/* 拖拽放置目标高亮：目录行 / 快捷请求分组头 */
+/* 拖拽放置目标高亮：目录行 / 请求树根级 */
 .workspace-tree-drop,
 .workspace-tree-drop:hover {
   background-color: var(--c-accent-faint);
@@ -501,7 +495,13 @@ body.is-sidebar-resizing {
 .workspace-request-tab-icon {
   flex-shrink: 0;
   font-size: 14px;
-  color: #f7ba1e;
+  color: var(--c-ink-tertiary);
+  transition: color var(--ease-out);
+}
+
+/* 激活标签的图标随文字一同点亮 */
+.workspace-request-tab-active .workspace-request-tab-icon {
+  color: var(--c-accent);
 }
 
 .workspace-request-tab-name {
