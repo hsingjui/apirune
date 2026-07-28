@@ -69,6 +69,6 @@ fn scan_font_families(probe: &str) -> Vec<FontFamily> {
             supports_text: flags.supports_text,
         })
         .collect();
-    list.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    list.sort_by_key(|font| font.name.to_lowercase());
     list
 }
