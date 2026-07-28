@@ -69,6 +69,7 @@ src-tauri/WixTools
 
 # Optional local tooling
 .history
+scripts/
 .direnv
 .vercel
 .netlify
