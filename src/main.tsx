@@ -8,6 +8,11 @@ import { applyAppearance } from "./lib/themes";
 import "./styles/global.css";
 import App from "./App";
 
+// 在首帧渲染前标记平台，macOS 透明窗口需要由页面层裁切圆角。
+document.documentElement.dataset.platform = navigator.userAgent.includes("Macintosh")
+  ? "macos"
+  : "desktop";
+
 // 渲染前先应用主题与字体，避免启动闪烁
 applyAppearance(loadSettings());
 

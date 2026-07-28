@@ -3,7 +3,7 @@ mod fonts;
 mod http;
 mod ws;
 
-use tauri::{Manager, PhysicalPosition, PhysicalSize};
+use tauri::{LogicalSize, Manager, PhysicalSize};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[tauri::command]
@@ -25,36 +25,63 @@ fn read_text_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| format!("读取文件 {path} 失败: {e}"))
 }
 
-/// 根据屏幕工作区放置窗口：宽高均按屏幕工作区比例计算并限制范围，
-/// 随后水平、垂直均居中（上下左右留白，位于菜单栏下方、Dock 上方）。
-fn place_window_in_work_area(window: &tauri::WebviewWindow) -> tauri::Result<()> {
-    let Some(monitor) = window.current_monitor()?.or(window.primary_monitor()?) else {
-        let _ = window.center();
-        return Ok(());
-    };
+/// 根据物理工作区和缩放因子计算逻辑窗口尺寸，确保高 DPI 显示器保持相同视觉比例。
+fn window_size_for_work_area(
+    work_area_size: PhysicalSize<u32>,
+    scale_factor: f64,
+) -> LogicalSize<f64> {
+    let work_area_size = work_area_size.to_logical::<f64>(scale_factor);
+    let work_w = work_area_size.width.round() as i32;
+    let work_h = work_area_size.height.round() as i32;
 
-    let work_area = monitor.work_area();
-    let work_w = work_area.size.width as i32;
-    let work_h = work_area.size.height as i32;
+    // macOS 的 Retina 内建屏逻辑工作区较小，使用更大的占比；其他平台保持现有观感。
+    #[cfg(target_os = "macos")]
+    const WIDTH_RATIO: f64 = 0.80;
+    #[cfg(not(target_os = "macos"))]
+    const WIDTH_RATIO: f64 = 0.63;
+    #[cfg(target_os = "macos")]
+    const HEIGHT_RATIO: f64 = 0.96;
+    #[cfg(not(target_os = "macos"))]
+    const HEIGHT_RATIO: f64 = 0.73;
 
-    // 宽度取屏幕宽度的 60%、高度取工作区高度的 66%，并 clamp 到合理范围：
     // 小屏不溢出、超宽屏不过空；当工作区比最小尺寸还窄时，再贴合工作区尺寸。
     const MIN_WIDTH: i32 = 960;
     const MAX_WIDTH: i32 = 1800;
     const MIN_HEIGHT: i32 = 520;
-    let width = (work_w as f64 * 0.63).round() as i32;
+    let width = (work_w as f64 * WIDTH_RATIO).round() as i32;
     let width = width.clamp(MIN_WIDTH, MAX_WIDTH).min(work_w).max(1);
-    let height = (work_h as f64 * 0.73).round() as i32;
+    let height = (work_h as f64 * HEIGHT_RATIO).round() as i32;
     let height = height.clamp(MIN_HEIGHT, work_h).max(1);
 
-    window.set_size(PhysicalSize::new(width as u32, height as u32))?;
+    LogicalSize::new(width as f64, height as f64)
+}
 
-    let outer = window.outer_size()?;
-    let x = work_area.position.x + (work_w - outer.width as i32) / 2;
-    let y = work_area.position.y + (work_h - outer.height as i32) / 2;
+/// 根据当前显示器工作区设置默认尺寸，并在显示前使用系统原生逻辑居中。
+fn place_window_in_work_area(window: &tauri::WebviewWindow) -> tauri::Result<()> {
+    let Some(monitor) = window.current_monitor()?.or(window.primary_monitor()?) else {
+        return window.center();
+    };
 
-    window.set_position(PhysicalPosition::new(x, y))?;
-    Ok(())
+    let work_area = monitor.work_area();
+    let window_size = window_size_for_work_area(work_area.size, monitor.scale_factor());
+
+    window.set_size(window_size)?;
+    window.center()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::window_size_for_work_area;
+    use tauri::PhysicalSize;
+
+    #[test]
+    fn keeps_window_size_consistent_across_dpi_scales() {
+        let standard_dpi = window_size_for_work_area(PhysicalSize::new(1920, 1080), 1.0);
+        let retina = window_size_for_work_area(PhysicalSize::new(3840, 2160), 2.0);
+
+        assert_eq!(retina, standard_dpi);
+        assert!(standard_dpi.width <= 1800.0);
+    }
 }
 
 /// Windows 11：请求 DWM 对无边框窗口做原生圆角裁切（抗锯齿、随 DPI 精确渲染）；

@@ -728,7 +728,7 @@ body {
   --border-radius-medium: 10px;
   --border-radius-large: 14px;
   --border-radius-circle: 50%;
-  /* 窗口四角由系统裁切（macOS WindowServer / Windows 11 DWM），内容侧保持直角贴满 */
+  /* 默认交给操作系统裁切；仅 macOS 的透明无边框窗口使用下方的 CSS 圆角。 */
   --window-border-radius: 0;
 
   /* === Arco 浅色变量映射：暖灰阶（gray 是 RGB 三元组） === */
@@ -784,6 +784,10 @@ body {
   touch-action: manipulation;
 }
 
+:root[data-platform="macos"] body {
+  --window-border-radius: 12px;
+}
+
 *,
 *::before,
 *::after {
@@ -794,6 +798,7 @@ body {
   overflow: hidden;
   overscroll-behavior: none;
   border-radius: var(--window-border-radius);
+  isolation: isolate;
 }
 
 /* === 字体排印：标题衬线、字重克制在 400、紧凑字距 === */
