@@ -24,6 +24,9 @@
   --c-accent: #cc7c5e;
   --c-accent-hover: #b56b50;
   --c-accent-faint: rgba(204, 124, 94, 0.15);
+  /* 选区底色：浅主题为 accent 加深 tint；深主题另调独立实色，
+     与画布约 2:1 对比、浅色文字在其上 ≥3:1 可读 */
+  --c-selection-bg: rgba(204, 124, 94, 0.28);
   --c-focus-ring: rgba(56, 53, 47, 0.1); /* 中性墨色焦点光环 */
 
   /* 4. Boundaries（沙色边界） */
@@ -51,6 +54,8 @@
   --json-number: #4a6da7;
   --json-bool: #8a5cb8;
   --json-null: var(--c-ink-tertiary);
+  /* 注释：引用随主题切换的弱化墨色，深浅主题均无需覆盖 */
+  --json-comment: var(--c-ink-tertiary);
   --json-invalid: #f53f3f;
 
   /* 7. 请求方法标识色：低饱和暖调，深色主题在 [data-theme] 块覆盖 */
@@ -71,6 +76,9 @@
   --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
   --shadow-subtle: 0 1px 2px rgba(56, 53, 47, 0.04);
   --shadow-float: 0 4px 12px rgba(56, 53, 47, 0.08);
+  /* 快速操作卡片：常驻柔和投影，悬停时加深抬升（参考设计稿） */
+  --shadow-quick-card: 0 1px 2px rgba(56, 53, 47, 0.05), 0 10px 28px -12px rgba(56, 53, 47, 0.14);
+  --shadow-quick-card-hover: 0 2px 4px rgba(56, 53, 47, 0.06), 0 16px 36px -12px rgba(56, 53, 47, 0.2);
 
   /* 动效节奏:钝化弹簧感 */
   --ease-out: 0.3s ease-out;
@@ -142,6 +150,7 @@
   --c-accent: #cc7c5e;
   --c-accent-hover: #d88f6f;
   --c-accent-faint: rgba(204, 124, 94, 0.22);
+  --c-selection-bg: #6e4a3a;
   --c-focus-ring: rgba(232, 230, 221, 0.12);
   /* shadcn 危险色与深色 --danger-6 对齐，避免亮红 #F53F3F 在深底上刺眼 */
   --destructive: #e8695a;
@@ -150,6 +159,8 @@
   --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
+  --shadow-quick-card-hover: 0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 36px -12px rgba(0, 0, 0, 0.55);
   --json-key: #d99e83;
   --json-string: #a3c293;
   --json-number: #8fb3e3;
@@ -201,6 +212,7 @@
   --c-accent: #5f8d63;
   --c-accent-hover: #4f7a56;
   --c-accent-faint: rgba(95, 141, 99, 0.15);
+  --c-selection-bg: rgba(95, 141, 99, 0.28);
   --c-focus-ring: rgba(49, 55, 46, 0.1);
   --c-border: #dbe2d3;
 }
@@ -240,6 +252,7 @@
   --c-accent: #4f7fa3;
   --c-accent-hover: #426e90;
   --c-accent-faint: rgba(79, 127, 163, 0.15);
+  --c-selection-bg: rgba(79, 127, 163, 0.28);
   --c-focus-ring: rgba(44, 53, 64, 0.1);
   --c-border: #d8e1e8;
 }
@@ -278,6 +291,7 @@
   --c-accent: #8ba8d0;
   --c-accent-hover: #9eb7d9;
   --c-accent-faint: rgba(139, 168, 208, 0.2);
+  --c-selection-bg: #41546e;
   --c-focus-ring: rgba(226, 229, 233, 0.12);
   --destructive: #e8695a;
   --c-border: #383c42;
@@ -285,6 +299,8 @@
   --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
+  --shadow-quick-card-hover: 0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 36px -12px rgba(0, 0, 0, 0.55);
   --json-key: #dea88e;
   --json-string: #a3c293;
   --json-number: #8fb3e3;
@@ -338,6 +354,7 @@
   --c-accent: #7d6bae;
   --c-accent-hover: #6d5c9c;
   --c-accent-faint: rgba(125, 107, 174, 0.14);
+  --c-selection-bg: rgba(125, 107, 174, 0.28);
   --c-focus-ring: rgba(53, 49, 62, 0.1);
   --c-border: #e1dbea;
   --json-key: #7d5aa6;
@@ -380,6 +397,7 @@
   --c-accent: #c26473;
   --c-accent-hover: #ad5464;
   --c-accent-faint: rgba(194, 100, 115, 0.14);
+  --c-selection-bg: rgba(194, 100, 115, 0.28);
   --c-focus-ring: rgba(60, 50, 52, 0.1);
   --c-border: #ecdfdd;
   --json-key: #b04a5c;
@@ -422,6 +440,7 @@
   --c-accent: #92b888;
   --c-accent-hover: #a3c599;
   --c-accent-faint: rgba(146, 184, 136, 0.2);
+  --c-selection-bg: #455843;
   --c-focus-ring: rgba(228, 232, 224, 0.12);
   --destructive: #e8695a;
   --c-border: #383e35;
@@ -429,6 +448,8 @@
   --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
+  --shadow-quick-card-hover: 0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 36px -12px rgba(0, 0, 0, 0.55);
   --json-key: #dba184;
   --json-string: #a9c896;
   --json-number: #8fb3e3;
@@ -482,6 +503,7 @@
   --c-accent: #b3a1d6;
   --c-accent-hover: #c2b2df;
   --c-accent-faint: rgba(179, 161, 214, 0.2);
+  --c-selection-bg: #524870;
   --c-focus-ring: rgba(230, 227, 236, 0.12);
   --destructive: #e8695a;
   --c-border: #3b3744;
@@ -489,6 +511,8 @@
   --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
+  --shadow-quick-card-hover: 0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 36px -12px rgba(0, 0, 0, 0.55);
   --json-key: #dea88e;
   --json-string: #a3c293;
   --json-number: #8fb3e3;
@@ -547,6 +571,7 @@
   --c-accent: #5aa4ae;
   --c-accent-hover: #4a929c;
   --c-accent-faint: rgba(90, 164, 174, 0.14);
+  --c-selection-bg: rgba(90, 164, 174, 0.28);
   --c-focus-ring: rgba(46, 58, 59, 0.1);
   --c-border: #d3e2e2;
 }
@@ -585,6 +610,7 @@
   --c-accent: #c67915;
   --c-accent-hover: #aa6a12;
   --c-accent-faint: rgba(198, 121, 21, 0.13);
+  --c-selection-bg: rgba(198, 121, 21, 0.28);
   --c-focus-ring: rgba(59, 53, 42, 0.1);
   --c-border: #e5dcc4;
   --json-key: #a5651a;
@@ -624,6 +650,7 @@
   --c-accent: #87c0ca;
   --c-accent-hover: #98cdd6;
   --c-accent-faint: rgba(135, 192, 202, 0.2);
+  --c-selection-bg: #33525c;
   --c-focus-ring: rgba(224, 232, 233, 0.12);
   --destructive: #e8695a;
   --c-border: #344246;
@@ -631,6 +658,8 @@
   --pi-c: 0.13;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
+  --shadow-quick-card-hover: 0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 36px -12px rgba(0, 0, 0, 0.55);
   --json-key: #dea88e;
   --json-string: #a3c293;
   --json-number: #8fb3e3;
@@ -681,7 +710,7 @@ body,
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
-  /* 无装饰透明窗口：圆角外区域必须透明 */
+  /* 窗口背景色由 .app-shell 承担，html/body 不设背景 */
   background: transparent;
 }
 
@@ -698,7 +727,8 @@ body {
   --border-radius-medium: 10px;
   --border-radius-large: 14px;
   --border-radius-circle: 50%;
-  --window-border-radius: 10px;
+  /* 窗口四角由系统裁切（macOS WindowServer / Windows 11 DWM），内容侧保持直角贴满 */
+  --window-border-radius: 0;
 
   /* === Arco 浅色变量映射：暖灰阶（gray 是 RGB 三元组） === */
   --gray-1: 245, 243, 236; /* #F5F3EC */
@@ -779,7 +809,7 @@ h4 {
 
 /* 覆盖原生蓝色高亮：选中文本是淡焦陶底色 */
 ::selection {
-  background-color: var(--c-accent-faint);
+  background-color: var(--c-selection-bg);
   color: var(--c-ink-primary);
 }
 

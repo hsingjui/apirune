@@ -151,14 +151,22 @@ impl SseEvent {
         let timestamp_ms = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_millis() as u64);
-        Self { kind: kind.into(), event: event.into(), data, timestamp_ms }
+        Self {
+            kind: kind.into(),
+            event: event.into(),
+            data,
+            timestamp_ms,
+        }
     }
 }
 
 /// 在缓冲区中查找首个事件分隔空行（\n\n 或 \r\n\r\n），返回（记录结束位置, 分隔符长度）
 fn find_sse_boundary(buf: &[u8]) -> Option<(usize, usize)> {
     let lf = buf.windows(2).position(|w| w == b"\n\n").map(|p| (p, 2));
-    let crlf = buf.windows(4).position(|w| w == b"\r\n\r\n").map(|p| (p, 4));
+    let crlf = buf
+        .windows(4)
+        .position(|w| w == b"\r\n\r\n")
+        .map(|p| (p, 4));
     match (lf, crlf) {
         (Some(a), Some(b)) => Some(if a.0 <= b.0 { a } else { b }),
         (a, b) => a.or(b),
@@ -232,12 +240,16 @@ async fn stream_sse_body(
 
 /// 过滤出启用且 key 非空的条目
 fn enabled_items(items: &[KeyValueItem]) -> impl Iterator<Item = &KeyValueItem> {
-    items.iter().filter(|item| item.enabled && !item.key.is_empty())
+    items
+        .iter()
+        .filter(|item| item.enabled && !item.key.is_empty())
 }
 
 /// 过滤出启用且 key 非空的表单字段
 fn enabled_fields(items: &[FormField]) -> impl Iterator<Item = &FormField> {
-    items.iter().filter(|item| item.enabled && !item.key.is_empty())
+    items
+        .iter()
+        .filter(|item| item.enabled && !item.key.is_empty())
 }
 
 /// 解析 form 类请求体（FormField[] 的 JSON 串）
@@ -283,7 +295,11 @@ fn base_builder(ssl_verify: bool, follow_redirects: bool) -> reqwest::ClientBuil
 /// 复用 Client 以复用连接池（TCP/TLS keep-alive）；证书校验、重定向策略与
 /// 是否禁用代理是 Client 级配置，按组合缓存 8 个实例；超时按请求单独设置。
 /// 缺省 Client 会自动跟随系统代理，no_proxy 为 true 时强制直连
-fn shared_client(ssl_verify: bool, follow_redirects: bool, no_proxy: bool) -> &'static reqwest::Client {
+fn shared_client(
+    ssl_verify: bool,
+    follow_redirects: bool,
+    no_proxy: bool,
+) -> &'static reqwest::Client {
     static CLIENTS: [OnceLock<reqwest::Client>; 8] = [const { OnceLock::new() }; 8];
     let index = (no_proxy as usize) << 2 | (ssl_verify as usize) << 1 | follow_redirects as usize;
     CLIENTS[index].get_or_init(|| {
@@ -319,7 +335,8 @@ fn jar_client(
     if let Some(client) = cache.get(&key) {
         return client.clone();
     }
-    let mut builder = base_builder(ssl_verify, follow_redirects).cookie_provider(project_jar(jar_id));
+    let mut builder =
+        base_builder(ssl_verify, follow_redirects).cookie_provider(project_jar(jar_id));
     if no_proxy {
         builder = builder.no_proxy();
     }
@@ -361,8 +378,14 @@ fn custom_proxy_client(
     }
     let key = format!(
         "{}|{}|{}|{}|{}|{}|{}|{}|jar:{}|",
-        cfg.url, cfg.for_http, cfg.for_https, cfg.username, cfg.password, cfg.bypass,
-        ssl_verify, follow_redirects,
+        cfg.url,
+        cfg.for_http,
+        cfg.for_https,
+        cfg.username,
+        cfg.password,
+        cfg.bypass,
+        ssl_verify,
+        follow_redirects,
         cookie_jar_id.unwrap_or(""),
     );
     let mut cached = CUSTOM_PROXY_CACHE.lock().unwrap();
@@ -550,7 +573,10 @@ pub async fn send_http_request(
     // 发送并计时；带 request_id 时与取消信号竞争，前端取消即中断请求
     let started = Instant::now();
     let fut = async move {
-        let mut response = client.execute(request).await.map_err(reqwest_error_string)?;
+        let mut response = client
+            .execute(request)
+            .await
+            .map_err(reqwest_error_string)?;
         let status = response.status();
 
         let mut headers = BTreeMap::new();

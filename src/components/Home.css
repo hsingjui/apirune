@@ -86,14 +86,16 @@
   margin-bottom: 24px;
 }
 
+/* 参考设计稿：无边框白卡 + 常驻柔和暖色投影，卡片靠光影而非描边浮于米色纸面之上 */
 .home-quick-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--color-neutral-3);
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid transparent;
   border-radius: var(--border-radius-large);
   background-color: var(--color-bg-1);
+  box-shadow: var(--shadow-quick-card);
   cursor: pointer;
   text-align: left;
   transition:
@@ -103,8 +105,7 @@
 }
 
 .home-quick-card:hover {
-  border-color: var(--color-neutral-4);
-  box-shadow: 0 8px 20px rgba(56, 53, 47, 0.1);
+  box-shadow: var(--shadow-quick-card-hover);
   transform: translateY(-2px);
 }
 
@@ -113,21 +114,47 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--border-radius-medium);
   background-color: var(--c-accent-faint);
   color: var(--c-accent);
+  transition: transform var(--ease-out);
+}
+
+.home-quick-card:hover .home-quick-icon {
+  transform: scale(1.06);
 }
 
 .home-quick-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+}
+
+/* 右侧引导箭头：常态浅灰，悬停时染上强调色并微移，暗示可点击进入 */
+.home-quick-arrow {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: var(--color-text-4);
+  transition:
+    color var(--ease-out),
+    transform var(--ease-out);
+}
+
+.home-quick-card:hover .home-quick-arrow {
+  color: var(--c-accent);
+  transform: translateX(2px);
 }
 
 /* 导入请求卡片：绿色图标，与工作区导入入口一致 */
 .home-quick-card-import .home-quick-icon {
   background-color: rgba(var(--success-6), 0.15);
+  color: rgb(var(--success-6));
+}
+
+.home-quick-card-import:hover .home-quick-arrow {
   color: rgb(var(--success-6));
 }
 
@@ -169,17 +196,32 @@
   max-width: 100%;
   height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--color-neutral-3);
+  border: 1px solid transparent;
   border-radius: var(--border-radius-medium);
   background-color: var(--color-bg-1);
+  box-shadow: var(--shadow-quick-card);
   color: var(--color-text-3);
   font-size: 13px;
   cursor: pointer;
-  transition: border-color var(--ease-out);
+  transition:
+    box-shadow var(--ease-out),
+    transform var(--ease-out),
+    color var(--ease-out);
 }
 
+/* 与快速操作卡片同一套悬浮语言：投影加深 + 轻微上浮，图标染强调色 */
 .home-search:hover {
-  border-color: var(--color-neutral-4);
+  box-shadow: var(--shadow-quick-card-hover);
+  color: var(--color-text-1);
+  transform: translateY(-1px);
+}
+
+.home-search:hover > svg {
+  color: var(--c-accent);
+}
+
+.home-search svg {
+  transition: color var(--ease-out);
 }
 
 .home-search svg {
@@ -204,6 +246,14 @@
   color: var(--color-text-3);
   font-family: var(--font-mono);
   font-size: 11px;
+  transition:
+    border-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.home-search:hover kbd {
+  border-color: var(--color-neutral-4);
+  color: var(--color-text-1);
 }
 
 .home-title {
@@ -617,7 +667,8 @@
 .home-shortcuts-card {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  /* 窗口高度不足时卡片收缩出滚动条，不再被侧栏 overflow 裁掉底部条目，
+     与左侧项目网格的内滚行为一致（全局已隐藏滚动条样式） */
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -629,6 +680,8 @@
 
 .home-shortcut {
   display: flex;
+  /* 卡片可滚动后行高不被压缩，否则条目会互相挤扁而不是触发滚动 */
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 10px;

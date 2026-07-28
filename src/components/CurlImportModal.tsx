@@ -62,6 +62,12 @@ function CurlImportModal({ visible, onCancel, onImport }: CurlImportModalProps) 
               setText(event.target.value);
               setError(null);
             }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                event.preventDefault();
+                if (text.trim()) handleImport();
+              }
+            }}
           />
           {error && (
             <p className="curl-import-error" role="alert">

@@ -41,6 +41,8 @@ import "./ProjectWorkspace.css";
 
 interface ProjectWorkspaceProps {
   project: Project;
+  requestTabState?: RequestTabState;
+  onRequestTabStateChange?: (projectId: string, state: RequestTabState) => void;
   /** 主页搜索深链打开的快捷请求，打开后通过回调清除 */
   initialRequest?: QuickRequest | null;
   onInitialRequestConsumed?: () => void;
@@ -64,6 +66,12 @@ interface RequestTab {
   folderId?: string | null;
   /** 标签标题；缺省时按序号显示「快捷请求 N」 */
   name?: string;
+}
+
+/** 项目内请求标签页的会话状态；切换项目后用于恢复打开的标签与当前选中项 */
+export interface RequestTabState {
+  tabs: RequestTab[];
+  activeId: string | null;
 }
 
 /** 左侧导航栏条目；labelKey 为文案 key，渲染时翻译 */
@@ -120,6 +128,8 @@ function formatDateTime(timestamp: number): string {
 /** 项目工作区：左侧功能导航 + 请求列表侧栏 + 主内容区 */
 function ProjectWorkspace({
   project,
+  requestTabState,
+  onRequestTabStateChange,
   initialRequest,
   onInitialRequestConsumed,
   initialCurl,
@@ -131,8 +141,10 @@ function ProjectWorkspace({
   const [sidebarWidth, setSidebarWidth] = useState(264);
   const [keyword, setKeyword] = useState("");
   // 快捷请求标签页：点击加号 / 快捷请求卡片创建，全部关闭后回到快捷入口
-  const [requestTabs, setRequestTabs] = useState<RequestTab[]>([]);
-  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [requestTabs, setRequestTabs] = useState<RequestTab[]>(() => requestTabState?.tabs ?? []);
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(
+    () => requestTabState?.activeId ?? null,
+  );
   const [curlModalVisible, setCurlModalVisible] = useState(false);
   const [openapiModalVisible, setOpenapiModalVisible] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
@@ -145,6 +157,10 @@ function ProjectWorkspace({
   // 主页导入 cURL 去重：StrictMode 下 effect 重复执行时按引用判重，避免开出两个标签
   const initialCurlRef = useRef<ParsedCurl | null>(null);
   const activeEnv = environments.find((env) => env.id === activeEnvId) ?? null;
+
+  useEffect(() => {
+    onRequestTabStateChange?.(project.id, { tabs: requestTabs, activeId: activeRequestId });
+  }, [activeRequestId, onRequestTabStateChange, project.id, requestTabs]);
 
   /** 选中环境并持久化到数据库，下次打开项目时恢复 */
   const selectEnvironment = (envId: string | null) => {
@@ -538,6 +554,11 @@ function ProjectWorkspace({
                       tabIndex={0}
                       className={`workspace-request-tab${activeRequestId === tab.id ? " workspace-request-tab-active" : ""}`}
                       onClick={() => setActiveRequestId(tab.id)}
+                      onAuxClick={(event) => {
+                        if (event.button !== 1) return;
+                        event.preventDefault();
+                        closeRequestTab(tab.id);
+                      }}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();

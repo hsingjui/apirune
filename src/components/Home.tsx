@@ -1,4 +1,4 @@
-import { Import, Pencil, Plus, Search, Trash2, Zap } from "lucide-react";
+import { ChevronRight, Import, Pencil, Plus, Search, Trash2, Zap } from "lucide-react";
 import { type CSSProperties, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { METHODS } from "../constants/methods";
@@ -225,6 +225,7 @@ function Home({
             <span className="home-quick-title">{t("home.quickRequest")}</span>
             <span className="home-quick-desc">{t("home.quickRequestDesc")}</span>
           </span>
+          <ChevronRight className="home-quick-arrow" />
         </button>
         <button type="button" className="home-quick-card home-quick-card-import" onClick={onImportRequest}>
           <span className="home-quick-icon">
@@ -234,6 +235,7 @@ function Home({
             <span className="home-quick-title">{t("home.importRequest")}</span>
             <span className="home-quick-desc">{t("home.importRequestDesc")}</span>
           </span>
+          <ChevronRight className="home-quick-arrow" />
         </button>
       </div>
 

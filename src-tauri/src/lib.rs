@@ -25,13 +25,10 @@ fn read_text_file(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| format!("读取文件 {path} 失败: {e}"))
 }
 
-/// 根据屏幕工作区放置窗口：高度填满工作区，宽度按屏幕宽度的比例计算并限制范围，
-/// 随后水平居中、垂直贴顶（位于菜单栏下方、Dock 上方）。
+/// 根据屏幕工作区放置窗口：宽高均按屏幕工作区比例计算并限制范围，
+/// 随后水平、垂直均居中（上下左右留白，位于菜单栏下方、Dock 上方）。
 fn place_window_in_work_area(window: &tauri::WebviewWindow) -> tauri::Result<()> {
-    let Some(monitor) = window
-        .current_monitor()?
-        .or(window.primary_monitor()?)
-    else {
+    let Some(monitor) = window.current_monitor()?.or(window.primary_monitor()?) else {
         let _ = window.center();
         return Ok(());
     };
@@ -40,22 +37,51 @@ fn place_window_in_work_area(window: &tauri::WebviewWindow) -> tauri::Result<()>
     let work_w = work_area.size.width as i32;
     let work_h = work_area.size.height as i32;
 
-    // 宽度取屏幕宽度的 88%，并 clamp 到 [960, 2400]：小屏不溢出、超宽屏不过空；
-    // 当工作区比最小宽度还窄时，再贴合工作区宽度。高度直接填满工作区。
+    // 宽度取屏幕宽度的 60%、高度取工作区高度的 66%，并 clamp 到合理范围：
+    // 小屏不溢出、超宽屏不过空；当工作区比最小尺寸还窄时，再贴合工作区尺寸。
     const MIN_WIDTH: i32 = 960;
-    const MAX_WIDTH: i32 = 2400;
-    let width = (work_w as f64 * 0.88).round() as i32;
+    const MAX_WIDTH: i32 = 1800;
+    const MIN_HEIGHT: i32 = 520;
+    let width = (work_w as f64 * 0.63).round() as i32;
     let width = width.clamp(MIN_WIDTH, MAX_WIDTH).min(work_w).max(1);
-    let height = work_h.max(1);
+    let height = (work_h as f64 * 0.73).round() as i32;
+    let height = height.clamp(MIN_HEIGHT, work_h).max(1);
 
     window.set_size(PhysicalSize::new(width as u32, height as u32))?;
 
     let outer = window.outer_size()?;
     let x = work_area.position.x + (work_w - outer.width as i32) / 2;
-    let y = work_area.position.y;
+    let y = work_area.position.y + (work_h - outer.height as i32) / 2;
 
     window.set_position(PhysicalPosition::new(x, y))?;
     Ok(())
+}
+
+/// Windows 11：请求 DWM 对无边框窗口做原生圆角裁切（抗锯齿、随 DPI 精确渲染）；
+/// Windows 10 不支持该属性，DwmSetWindowAttribute 静默失败后退化为直角窗口。
+#[cfg(target_os = "windows")]
+fn enable_native_rounded_corners(window: &tauri::WebviewWindow) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use windows_sys::Win32::Graphics::Dwm::{
+        DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE,
+    };
+    /// DWMWCP_ROUND：强制圆角（窗口最大化时 DWM 自动退化为直角）
+    const DWMWCP_ROUND: i32 = 2;
+
+    if let Ok(handle) = window.window_handle() {
+        if let RawWindowHandle::Win32(raw) = handle.as_raw() {
+            let preference: i32 = DWMWCP_ROUND;
+            unsafe {
+                // Win10 上该属性不存在，调用失败仅返回错误码，无副作用
+                let _ = DwmSetWindowAttribute(
+                    raw.hwnd.get() as _,
+                    DWMWA_WINDOW_CORNER_PREFERENCE as u32,
+                    &preference as *const i32 as *const _,
+                    std::mem::size_of_val(&preference) as u32,
+                );
+            }
+        }
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -129,6 +155,8 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 // 先按屏幕工作区确定尺寸与位置，再显示，避免初始 1280×800 闪现后跳变。
                 let _ = place_window_in_work_area(&window);
+                #[cfg(target_os = "windows")]
+                enable_native_rounded_corners(&window);
                 let _ = window.show();
             }
             Ok(())

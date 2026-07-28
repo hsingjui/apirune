@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import CreateProjectModal from "./components/CreateProjectModal";
 import CurlImportModal from "./components/CurlImportModal";
 import DeleteProjectModal from "./components/DeleteProjectModal";
 import Home from "./components/Home";
-import ProjectWorkspace from "./components/ProjectWorkspace";
+import ProjectWorkspace, { type RequestTabState } from "./components/ProjectWorkspace";
 import TitleBar from "./components/TitleBar";
 import { usePersistentState } from "./hooks/usePersistentState";
 import {
@@ -34,6 +34,8 @@ function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [openIds, setOpenIds] = usePersistentState<string[]>("apirune:open-tabs", []);
   const [activeId, setActiveId] = usePersistentState<string | null>("apirune:active-tab", null);
+  // 项目切换时保留各自已打开的请求标签；仅维持当前应用会话，避免恢复未保存编辑内容
+  const [requestTabStates, setRequestTabStates] = useState<Record<string, RequestTabState>>({});
   // 创建/编辑共用同一个 Modal：editingProject 为 null 即创建模式
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -81,10 +83,27 @@ function App() {
     const index = openIds.indexOf(id);
     const nextIds = openIds.filter((openId) => openId !== id);
     setOpenIds(nextIds);
+    setRequestTabStates((states) => {
+      const { [id]: _closedState, ...remainingStates } = states;
+      return remainingStates;
+    });
     // 关闭的是当前标签时，优先切到左侧标签，否则右侧，最后回到主页
     if (activeId === id) {
       setActiveId(nextIds[index - 1] ?? nextIds[index] ?? null);
     }
+  };
+
+  const handleRequestTabStateChange = useCallback((id: string, state: RequestTabState) => {
+    setRequestTabStates((states) => ({ ...states, [id]: state }));
+  }, []);
+
+  /** 顶部标签拖拽排序，只影响当前会话的打开项目顺序 */
+  const handleReorderOpenTabs = (ids: string[]) => {
+    setOpenIds((previousIds) => {
+      const reorderedIds = ids.filter((id) => previousIds.includes(id));
+      const remainingIds = previousIds.filter((id) => !reorderedIds.includes(id));
+      return [...reorderedIds, ...remainingIds];
+    });
   };
 
   const handleCreateProject = async (input: CreateProjectInput) => {
@@ -120,6 +139,10 @@ function App() {
       await deleteProject(id);
       setProjects((prev) => prev.filter((project) => project.id !== id));
       setOpenIds((prev) => prev.filter((openId) => openId !== id));
+      setRequestTabStates((states) => {
+        const { [id]: _deletedState, ...remainingStates } = states;
+        return remainingStates;
+      });
       if (activeId === id) {
         setActiveId(null);
       }
@@ -246,12 +269,16 @@ function App() {
         activeId={activeProject?.id ?? null}
         onSelectTab={setActiveId}
         onCloseTab={handleCloseProject}
+        onReorderTabs={handleReorderOpenTabs}
         onRefresh={() => setContentKey((key) => key + 1)}
       />
       <main className={`app-content${activeProject ? " app-content-bare" : ""}`} key={contentKey}>
         {activeProject ? (
           <ProjectWorkspace
+            key={activeProject.id}
             project={activeProject}
+            requestTabState={requestTabStates[activeProject.id]}
+            onRequestTabStateChange={handleRequestTabStateChange}
             initialRequest={pendingRequest?.projectId === activeProject.id ? pendingRequest : null}
             onInitialRequestConsumed={() => setPendingRequest(null)}
             initialCurl={

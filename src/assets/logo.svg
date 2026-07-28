@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- apirune logo: Raidho rune (ᚱ) —— 几何单字母 "R" 徽章 -->
+  <rect x="4" y="4" width="504" height="504" rx="112" fill="#FAF9F5" stroke="#E3E0D6" stroke-width="8"/>
+  <g fill="none" stroke="#CC7C5E" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M188 126 V386"/>
+    <path d="M188 126 L302 198 L188 270"/>
+    <path d="M188 270 L324 386"/>
+  </g>
+</svg>

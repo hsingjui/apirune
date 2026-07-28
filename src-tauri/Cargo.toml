@@ -31,4 +31,8 @@ futures-util = { version = "0.3", default-features = false, features = ["sink", 
 base64 = "0.22"
 fontdb = "0.23.0"
 ttf-parser = "0.25"
+raw-window-handle = "0.6"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Dwm"] }
 

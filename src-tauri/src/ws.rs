@@ -101,7 +101,11 @@ pub async fn ws_connect(
                 }
                 Ok(Message::Close(frame)) => {
                     let reason = frame
-                        .map(|f| format!("{} {}", u16::from(f.code), f.reason).trim().to_string())
+                        .map(|f| {
+                            format!("{} {}", u16::from(f.code), f.reason)
+                                .trim()
+                                .to_string()
+                        })
                         .unwrap_or_default();
                     emit_ws_event(&app, &id, "closed", reason, false);
                     notified = true;

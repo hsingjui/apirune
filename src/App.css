@@ -8,6 +8,8 @@
   overscroll-behavior: none;
   border-radius: var(--window-border-radius);
   background-color: var(--color-fill-2);
+  /* 1px 内描边：随圆角裁切，使窗口边缘轮廓清晰，掩盖残余毛边 */
+  box-shadow: inset 0 0 0 1px var(--c-border);
 }
 
 .app-content {

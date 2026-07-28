@@ -172,6 +172,28 @@ export async function upsertGlobalVariable(
   await saveProjectGlobals(projectId, globals);
 }
 
+/** 向项目全局参数写入单项；同类型同名参数覆盖，Header 名忽略大小写 */
+export async function upsertGlobalParam(
+  projectId: string,
+  paramIn: GlobalParam["in"],
+  name: string,
+  value: string,
+): Promise<void> {
+  const globals = await getProjectGlobals(projectId);
+  const existing = globals.params.find(
+    (item) =>
+      item.in === paramIn &&
+      (paramIn === "header" ? item.name.toLowerCase() === name.toLowerCase() : item.name === name),
+  );
+  if (existing) {
+    existing.name = name;
+    existing.value = value;
+  } else {
+    globals.params.push({ in: paramIn, name, value });
+  }
+  await saveProjectGlobals(projectId, globals);
+}
+
 /** 删除项目时级联清理环境、全局配置与环境选择 */
 export async function deleteEnvironmentData(projectId: string): Promise<void> {
   const db = await getDb();

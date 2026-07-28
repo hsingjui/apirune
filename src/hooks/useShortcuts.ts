@@ -3,11 +3,12 @@ import {
   comboFromEvent,
   isShortcutRecording,
   loadShortcuts,
+  MOD,
   SHORTCUT_EVENT,
 } from "../lib/shortcuts";
 import type { ShortcutAction } from "../types/shortcuts";
 
-/** 快捷键事件：gotoTab 为固定的 ⌘1–⌘9 跳转，index 即数字键 */
+/** 快捷键事件：gotoTab 为固定的主修饰键+1–9 跳转，index 即数字键 */
 export interface ShortcutEventDetail {
   action: ShortcutAction | "gotoTab";
   index?: number;
@@ -45,7 +46,7 @@ export function useShortcutListener() {
       }
       // 固定快捷键：主修饰键+1–8 跳转到对应标签页，+9 跳转到最后一个
       // macOS 为 ⌘1–⌘9，其余平台为 Ctrl+1–Ctrl+9
-      const digit = /^(?:meta|ctrl)\+([1-9])$/.exec(combo);
+      const digit = new RegExp(`^${MOD}\\+([1-9])$`).exec(combo);
       if (digit) {
         if (!hasShortcutHandler("gotoTab")) return;
         event.preventDefault();

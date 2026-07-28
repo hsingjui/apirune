@@ -167,6 +167,8 @@ export function applyAppearance(
   }
   /* 同步 color-scheme：原生表单控件（日期、复选框等）随主题明暗渲染 */
   root.style.colorScheme = theme.appearance;
-  root.style.setProperty("--font-sans", resolveFontStack(settings.uiFont, UI_FONTS));
+  const uiFontStack = resolveFontStack(settings.uiFont, UI_FONTS);
+  root.style.setProperty("--font-sans", uiFontStack);
+  root.style.setProperty("--font-serif", uiFontStack);
   root.style.setProperty("--font-mono", resolveFontStack(settings.monoFont, MONO_FONTS));
 }

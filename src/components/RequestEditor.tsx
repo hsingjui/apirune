@@ -2,6 +2,7 @@ import { open as openFileDialog, save as saveFileDialog } from "@tauri-apps/plug
 import {
   ArrowDown,
   Braces,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   CircleCheck,
@@ -18,7 +19,7 @@ import {
   Unplug,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +33,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { getMethodColor, METHODS } from "../constants/methods";
 import { useShortcutAction } from "../hooks/useShortcuts";
 import { t, useI18n } from "../i18n";
-import { getProjectGlobals, upsertEnvVariable, upsertGlobalVariable } from "../lib/environments";
+import {
+  getProjectGlobals,
+  listEnvironments,
+  upsertEnvVariable,
+  upsertGlobalParam,
+  upsertGlobalVariable,
+} from "../lib/environments";
 import { addHistory } from "../lib/history";
 import {
   cancelHttpRequest,
@@ -42,7 +49,10 @@ import {
 } from "../lib/http";
 import { createQuickRequest, updateQuickRequest } from "../lib/quickRequests";
 import { loadSettings, toProxyConfig } from "../lib/settings";
-import type { Environment } from "../types/environment";
+import type {
+  Environment,
+  GlobalParamIn,
+} from "../types/environment";
 import type { HttpResponseData, SseEvent } from "../types/http";
 import type { QuickRequest } from "../types/quick";
 import type {
@@ -56,8 +66,13 @@ import type { CodegenInput } from "../utils/codegen";
 import type { ParsedCurl } from "../utils/curl";
 import { resolveRequestWithEnv } from "../utils/env";
 import { createId } from "../utils/id";
+import { parseJsonWithComments, stripJsonComments } from "../utils/jsonc";
 import CodegenModal from "./CodegenModal";
-import { JsonEditor, JsonViewer } from "./JsonView";
+import {
+  JsonEditor,
+  JsonViewer,
+  type JsonPropertyContextMenu,
+} from "./JsonView";
 import SaveRequestModal from "./SaveRequestModal";
 import "./RequestEditor.css";
 
@@ -103,6 +118,21 @@ interface QueryParam {
   enabled: boolean;
 }
 
+interface VariableMenu {
+  x: number;
+  y: number;
+  value: string;
+  copyValue?: string;
+}
+
+interface GlobalParamMenu {
+  x: number;
+  y: number;
+  in: GlobalParamIn;
+  name: string;
+  value: string;
+}
+
 /** 表单行：在键值对之上增加字段类型与 array 多值 */
 interface FormRow extends QueryParam {
   /** 缺省 text */
@@ -134,7 +164,11 @@ interface RequestEditorProps {
 
 /** KeyValueItem[] → 编辑器内部键值对 */
 function toPairs(items?: KeyValueItem[]): QueryParam[] {
-  return (items ?? []).map(({ key, value, enabled }) => ({ key, value, enabled: enabled !== false }));
+  return (items ?? []).map(({ key, value, enabled }) => ({
+    key,
+    value,
+    enabled: enabled !== false,
+  }));
 }
 
 /** 编辑器内部键值对 → 发送用 KeyValueItem[]（过滤空 key） */
@@ -204,7 +238,7 @@ function initBodyText(initial?: ParsedCurl): string {
   if (initial.bodyType === "form-data" || initial.bodyType === "x-www-form-urlencoded") return "";
   if (initial.bodyType === "json") {
     try {
-      return JSON.stringify(JSON.parse(initial.body), null, 2);
+      return JSON.stringify(parseJsonWithComments(initial.body), null, 2);
     } catch {
       // 非法 JSON 时原样展示
     }
@@ -286,12 +320,19 @@ function RequestEditor({
   // 生成代码弹窗：input 为打开时计算的请求快照
   const [codegenVisible, setCodegenVisible] = useState(false);
   const [codegenInput, setCodegenInput] = useState<CodegenInput | null>(null);
-  // 响应区右键菜单与「设为变量」弹窗
-  const [varMenu, setVarMenu] = useState<{ x: number; y: number; value: string } | null>(null);
+  // 选区右键菜单与变量编辑弹窗
+  const [varMenu, setVarMenu] = useState<VariableMenu | null>(null);
+  const [globalParamMenu, setGlobalParamMenu] = useState<GlobalParamMenu | null>(null);
   const [varModalOpen, setVarModalOpen] = useState(false);
+  const [variableEnvironments, setVariableEnvironments] = useState<Environment[]>([]);
+  const [globalVariables, setGlobalVariables] = useState<Environment["variables"]>([]);
   const [varName, setVarName] = useState("");
   const [varValue, setVarValue] = useState("");
-  const [varScope, setVarScope] = useState<"env" | "global">("global");
+  const [varScope, setVarScope] = useState("global");
+  const selectedVariableEnvironment = variableEnvironments.find((item) => item.id === varScope);
+  const existingVariables = (
+    varScope === "global" ? globalVariables : selectedVariableEnvironment?.variables ?? []
+  ).filter((variable) => variable.name);
   const responseRef = useRef<HTMLElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
 
@@ -428,6 +469,16 @@ function RequestEditor({
     } catch (err) {
       console.error("读取环境配置失败", err);
     }
+    if (input.bodyType === "json") {
+      try {
+        // 保存时保留注释；仅发送（以及对应的历史记录）使用无注释的 JSON 正文。
+        input = { ...input, body: stripJsonComments(input.body) };
+      } catch {
+        setSending(false);
+        toast.warning(t("editor.invalidJson"));
+        return;
+      }
+    }
     let result: HttpResponseData | null = null;
     let error: string | null = null;
     try {
@@ -526,7 +577,7 @@ function RequestEditor({
   const handleFormatBody = () => {
     if (!bodyText.trim()) return;
     try {
-      setBodyText(JSON.stringify(JSON.parse(bodyText), null, 2));
+      setBodyText(JSON.stringify(parseJsonWithComments(bodyText), null, 2));
     } catch {
       toast.warning(t("editor.invalidJson"));
     }
@@ -559,25 +610,92 @@ function RequestEditor({
     }
   };
 
-  /** 响应区右键：选中文本时弹出「设为变量」菜单 */
-  const handleResponseContextMenu = (event: React.MouseEvent) => {
-    const value = cleanSelection(window.getSelection()?.toString() ?? "");
+  /** 将请求行快速加入当前项目的全局参数 */
+  const showGlobalParamMenu = (
+    event: React.MouseEvent,
+    paramIn: GlobalParamIn,
+    item: QueryParam,
+  ) => {
+    const name = item.key.trim();
+    if (!name) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setVarMenu(null);
+    setGlobalParamMenu({ x: event.clientX, y: event.clientY, in: paramIn, name, value: item.value });
+  };
+
+  /** 写入全局参数；同类型同名参数由数据层覆盖，避免重复注入 */
+  const handleAddGlobalParam = async () => {
+    if (!globalParamMenu) return;
+    const { in: paramIn, name, value } = globalParamMenu;
+    setGlobalParamMenu(null);
+    try {
+      await upsertGlobalParam(projectId, paramIn, name, value);
+      toast.success(t("editor.globalParamSaved", { name }));
+    } catch (err) {
+      console.error("保存全局参数失败", err);
+      toast.error(t("editor.globalParamSaveFailed"));
+    }
+  };
+
+  /** 打开选区变量菜单 */
+  const showVariableMenu = (event: React.MouseEvent, selected: string) => {
+    const value = cleanSelection(selected);
     if (!value) return;
     event.preventDefault();
     setVarMenu({ x: event.clientX, y: event.clientY, value });
   };
 
-  /** 打开设为变量弹窗，预填选中的值；默认存入当前环境，未选环境时存入全局 */
+  /** 请求编辑区右键：input / textarea 需直接读取其选区 */
+  const handleRequestContextMenu = (event: React.MouseEvent) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+      const start = target.selectionStart ?? 0;
+      const end = target.selectionEnd ?? 0;
+      showVariableMenu(event, target.value.slice(start, end));
+      return;
+    }
+    showVariableMenu(event, window.getSelection()?.toString() ?? "");
+  };
+
+  /** 响应区右键：选中文本后设置环境变量 */
+  const handleResponseContextMenu = (event: React.MouseEvent) => {
+    showVariableMenu(event, window.getSelection()?.toString() ?? "");
+  };
+
+  /** JSON 属性名右键：显示对应值的复制项，同时保留选区的变量操作。 */
+  const handleJsonPropertyContextMenu = useCallback(({ x, y, value }: JsonPropertyContextMenu) => {
+    const selected = cleanSelection(window.getSelection()?.toString() ?? "");
+    setVarMenu({ x, y, value: selected || value, copyValue: value });
+  }, []);
+
+  const handleCopyPropertyValue = () => {
+    if (!varMenu || varMenu.copyValue === undefined) return;
+    void navigator.clipboard.writeText(varMenu.copyValue).then(
+      () => toast.success(t("editor.copied")),
+      () => toast.error(t("editor.copyFailed")),
+    );
+    setVarMenu(null);
+  };
+
+  /** 打开变量弹窗，默认写入当前环境；未选择环境时写入全局 */
   const openVarModal = () => {
     if (!varMenu) return;
     setVarName("");
     setVarValue(varMenu.value);
-    setVarScope(environment ? "env" : "global");
+    setVarScope(environment?.id ?? "global");
+    setVariableEnvironments(environment ? [environment] : []);
     setVarMenu(null);
     setVarModalOpen(true);
+    void Promise.all([listEnvironments(projectId), getProjectGlobals(projectId)])
+      .then(([environments, globals]) => {
+        setVariableEnvironments(environments);
+        setGlobalVariables(globals.variables);
+      })
+      .catch((err) => console.error("读取变量保存目标失败", err));
   };
 
-  /** 保存提取的变量到当前环境 / 项目全局变量 */
+  /** 保存选区内容到指定环境 / 项目全局变量 */
   const handleVarSave = async () => {
     const name = varName.trim();
     if (!name) {
@@ -585,11 +703,11 @@ function RequestEditor({
       return;
     }
     try {
-      if (varScope === "env" && environment) {
-        await upsertEnvVariable(environment.id, name, varValue);
-        onEnvChanged?.();
-      } else {
+      if (varScope === "global") {
         await upsertGlobalVariable(projectId, name, varValue);
+      } else {
+        await upsertEnvVariable(varScope, name, varValue);
+        onEnvChanged?.();
       }
       setVarModalOpen(false);
       toast.success(t("editor.varSaved", { name }));
@@ -618,6 +736,14 @@ function RequestEditor({
       };
     } catch (err) {
       console.error("读取环境配置失败", err);
+    }
+    if (input.bodyType === "json") {
+      try {
+        input = { ...input, body: stripJsonComments(input.body) };
+      } catch {
+        toast.warning(t("editor.invalidJson"));
+        return;
+      }
     }
     setCodegenInput(input);
     setCodegenVisible(true);
@@ -741,6 +867,7 @@ function RequestEditor({
       {/* 页签内容；JSON 请求体时编辑器填满剩余高度，随响应区拖拽同步伸缩 */}
       <div
         className={`request-panel${activeTab === "Body" && bodyType === "json" ? " request-panel-flush" : ""}`}
+        onContextMenu={handleRequestContextMenu}
       >
         {activeTab === "Params" ? (
           <>
@@ -748,6 +875,8 @@ function RequestEditor({
               title={t("editor.queryParams")}
               items={params}
               onChange={setParams}
+              globalParamIn="query"
+              onAddGlobalParam={showGlobalParamMenu}
               enableable
             />
             {pathParams.length > 0 && (
@@ -761,6 +890,8 @@ function RequestEditor({
             onChange={setHeaders}
             keyPlaceholder={t("editor.headerKey")}
             valuePlaceholder={t("editor.headerValue")}
+            globalParamIn="header"
+            onAddGlobalParam={showGlobalParamMenu}
             enableable
           />
         ) : activeTab === "Cookies" ? (
@@ -771,6 +902,8 @@ function RequestEditor({
               onChange={setCookies}
               keyPlaceholder={t("editor.cookieKey")}
               valuePlaceholder={t("editor.cookieValue")}
+              globalParamIn="cookie"
+              onAddGlobalParam={showGlobalParamMenu}
             />
             <div className="request-cookies-panel">
               <p className="request-cookies-hint">{t("editor.cookieJarHint")}</p>
@@ -1008,7 +1141,7 @@ function RequestEditor({
               />
             ) : responseJson !== null ? (
               <div className="request-response-body request-response-json">
-                <JsonViewer value={responseJson} />
+                <JsonViewer value={responseJson} onPropertyContextMenu={handleJsonPropertyContextMenu} />
               </div>
             ) : (
               <pre className="request-response-body">{response.body}</pre>
@@ -1028,7 +1161,33 @@ function RequestEditor({
         )}
       </footer>
 
-      {/* 响应区右键菜单：选中文本设为变量 */}
+      {/* 快速添加全局参数菜单 */}
+      {globalParamMenu && (
+        <div
+          className="request-global-param-overlay"
+          onMouseDown={() => setGlobalParamMenu(null)}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            setGlobalParamMenu(null);
+          }}
+        >
+          <div
+            className="request-global-param-menu"
+            style={{ left: globalParamMenu.x, top: globalParamMenu.y }}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="request-global-param-menu-item"
+              onClick={() => void handleAddGlobalParam()}
+            >
+              {t("editor.addGlobalParam")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 选区变量菜单 */}
       {varMenu && (
         <div
           className="response-var-overlay"
@@ -1043,6 +1202,15 @@ function RequestEditor({
             style={{ left: varMenu.x, top: varMenu.y }}
             onMouseDown={(event) => event.stopPropagation()}
           >
+            {varMenu.copyValue !== undefined && (
+              <button
+                type="button"
+                className="response-var-menu-item"
+                onClick={handleCopyPropertyValue}
+              >
+                {t("editor.copyValue")}
+              </button>
+            )}
             <button type="button" className="response-var-menu-item" onClick={openVarModal}>
               {t("editor.setAsVariable")}
             </button>
@@ -1050,7 +1218,7 @@ function RequestEditor({
         </div>
       )}
 
-      {/* 设为变量弹窗 */}
+      {/* 变量弹窗 */}
       <Dialog open={varModalOpen} onOpenChange={(open) => !open && setVarModalOpen(false)}>
         <DialogContent className="sm:max-w-[440px]" aria-describedby={undefined}>
           <DialogHeader>
@@ -1059,11 +1227,10 @@ function RequestEditor({
           <div className="response-var-form">
             <label className="response-var-field">
               <span>{t("editor.varName")}</span>
-              <input
-                autoFocus
+              <VariableNameInput
                 value={varName}
-                onChange={(event) => setVarName(event.target.value)}
-                placeholder={t("editor.varNamePlaceholder")}
+                options={existingVariables}
+                onChange={setVarName}
               />
             </label>
             <label className="response-var-field">
@@ -1076,21 +1243,18 @@ function RequestEditor({
             </label>
             <div className="response-var-field">
               <span>{t("editor.varScope")}</span>
-              <Select
-                value={varScope}
-                onValueChange={(value) => setVarScope(value as "env" | "global")}
-              >
+              <Select value={varScope} onValueChange={setVarScope}>
                 <SelectTrigger className="response-var-scope">
-                  {varScope === "env"
-                    ? t("editor.varScopeEnv", { name: environment?.name ?? "" })
-                    : t("editor.varScopeGlobal")}
+                  {varScope === "global"
+                    ? t("editor.varScopeGlobal")
+                    : selectedVariableEnvironment?.name ?? environment?.name ?? ""}
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {environment && (
-                    <SelectItem value="env">
-                      {t("editor.varScopeEnv", { name: environment.name })}
+                  {variableEnvironments.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name}
                     </SelectItem>
-                  )}
+                  ))}
                   <SelectItem value="global">{t("editor.varScopeGlobal")}</SelectItem>
                 </SelectContent>
               </Select>
@@ -1104,6 +1268,108 @@ function RequestEditor({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** 变量名输入框：默认直接输入新名称；点击右侧箭头展开已有变量列表选择（支持过滤与键盘导航） */
+function VariableNameInput({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: Environment["variables"];
+  onChange: (name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const listId = useId();
+
+  const keyword = value.trim().toLowerCase();
+  const filtered = options.filter((item) => item.name.toLowerCase().includes(keyword));
+  const showList = open && filtered.length > 0;
+
+  // 键盘高亮项滚入可视区
+  useEffect(() => {
+    if (!showList) return;
+    document.getElementById(`${listId}-${activeIndex}`)?.scrollIntoView({ block: "nearest" });
+  }, [showList, activeIndex, listId]);
+
+  const pick = (name: string) => {
+    onChange(name);
+    setOpen(false);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (!showList) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((index) => (index + step + filtered.length) % filtered.length);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      pick(filtered[activeIndex].name);
+    } else if (event.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="response-var-combo">
+      <input
+        autoFocus
+        role="combobox"
+        aria-expanded={showList}
+        aria-controls={listId}
+        aria-activedescendant={showList ? `${listId}-${activeIndex}` : undefined}
+        aria-autocomplete="list"
+        spellCheck={false}
+        value={value}
+        placeholder={t("editor.varNamePlaceholder")}
+        onBlur={() => setOpen(false)}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setActiveIndex(0);
+        }}
+        onKeyDown={handleKeyDown}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        className={`response-var-combo-toggle${showList ? " response-var-combo-toggle-open" : ""}`}
+        aria-label={t("editor.varPickExisting")}
+        title={t("editor.varPickExisting")}
+        // mousedown 抢在输入框 blur 之前切换，preventDefault 避免焦点离开输入框
+        onMouseDown={(event) => {
+          event.preventDefault();
+          setActiveIndex(0);
+          setOpen((prev) => !prev);
+        }}
+      >
+        <ChevronDown />
+      </button>
+      {showList && (
+        <ul className="response-var-options" role="listbox" id={listId}>
+          {filtered.map((item, index) => (
+            <li
+              key={item.name}
+              id={`${listId}-${index}`}
+              role="option"
+              aria-selected={index === activeIndex}
+              className={`response-var-option${index === activeIndex ? " response-var-option-active" : ""}`}
+              // mousedown 抢在输入框 blur 之前完成选择，preventDefault 避免抢焦点
+              onMouseDown={(event) => {
+                event.preventDefault();
+                pick(item.name);
+              }}
+              onMouseEnter={() => setActiveIndex(index)}
+            >
+              <span className="response-var-option-name">{item.name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -1256,6 +1522,8 @@ function KeyValueTable({
   keyPlaceholder = t("editor.paramKey"),
   valuePlaceholder = t("editor.paramValue"),
   fieldTypes,
+  globalParamIn,
+  onAddGlobalParam,
   enableable = false,
 }: {
   title: string;
@@ -1265,6 +1533,9 @@ function KeyValueTable({
   valuePlaceholder?: string;
   /** 可选的字段类型列表；缺省不显示类型列 */
   fieldTypes?: FormFieldType[];
+  /** 右键将行快速添加到对应类型的全局参数 */
+  globalParamIn?: GlobalParamIn;
+  onAddGlobalParam?: (event: React.MouseEvent, paramIn: GlobalParamIn, item: QueryParam) => void;
   /** 启用发送开关；Params / Headers 使用，表单保留批量选择删除 */
   enableable?: boolean;
 }) {
@@ -1308,7 +1579,6 @@ function KeyValueTable({
       rows?.[index]?.querySelector<HTMLInputElement>('input:not([type="checkbox"])')?.focus();
     });
   };
-
 
   const allSelected = items.length > 0 && selected.size === items.length;
   const allEnabled = items.length > 0 && items.every((item) => item.enabled !== false);
@@ -1414,6 +1684,15 @@ function KeyValueTable({
                 setHoverRow(index);
               }}
               onPointerLeave={() => setHoverRow(-1)}
+              onContextMenuCapture={
+                globalParamIn && !isPlaceholder && onAddGlobalParam
+                  ? (event) => {
+                      if (!hasSelectedText(event.target)) {
+                        onAddGlobalParam(event, globalParamIn, item);
+                      }
+                    }
+                  : undefined
+              }
             >
               {isPlaceholder ? (
                 <span aria-hidden="true" />
@@ -1424,7 +1703,9 @@ function KeyValueTable({
                   aria-label={enableable ? t("editor.enableRow") : t("editor.selectRow")}
                   checked={enableable ? item.enabled !== false : selected.has(index)}
                   onChange={() =>
-                    enableable ? patchItem(index, { enabled: item.enabled === false }) : toggleRow(index)
+                    enableable
+                      ? patchItem(index, { enabled: item.enabled === false })
+                      : toggleRow(index)
                   }
                 />
               )}
@@ -1697,11 +1978,11 @@ function SseTimeline({
     }
   }, [active]);
 
-  /** 复制右侧展示的内容（JSON 美化后的文本，非 JSON 为原文） */
+  /** 复制纯文本事件内容（JSON 事件由 JsonViewer 自带复制按钮接管） */
   const handleCopyDetail = async () => {
     if (!active) return;
     try {
-      await navigator.clipboard.writeText(detailJson ?? active.data);
+      await navigator.clipboard.writeText(active.data);
       toast.success(t("editor.copied"));
     } catch (err) {
       console.error("复制 SSE 事件内容失败", err);
@@ -1791,10 +2072,10 @@ function SseTimeline({
       {/* 中缝拖拽手柄：骑在列表右边框上 */}
       <div className="response-sse-resizer" aria-hidden="true" onPointerDown={startPaneResize} />
       <div className="response-sse-detail">
-        {active && (
+        {active && detailJson === null && (
           <button
             type="button"
-            className="response-sse-copy"
+            className="json-copy"
             title={t("common.copy")}
             aria-label={t("common.copy")}
             onClick={() => void handleCopyDetail()}
@@ -1858,6 +2139,20 @@ function cleanSelection(text: string): string {
     value = value.slice(1, -1);
   }
   return value;
+}
+
+/** 参数行存在选区时，将右键交由外层的环境变量菜单处理。 */
+function hasSelectedText(target: EventTarget | null): boolean {
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+    const start = target.selectionStart ?? 0;
+    const end = target.selectionEnd ?? 0;
+    return Boolean(cleanSelection(target.value.slice(start, end)));
+  }
+  const selection = window.getSelection();
+  if (!selection || !(target instanceof Node) || !selection.containsNode(target, true)) {
+    return false;
+  }
+  return Boolean(cleanSelection(selection.toString()));
 }
 
 /** 常见响应类型对应的文件扩展名，推断保存文件名用 */
