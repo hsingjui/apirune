@@ -151,7 +151,9 @@
   white-space: nowrap;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color var(--ease-out), opacity var(--ease-out);
+  transition:
+    background-color var(--ease-out),
+    opacity var(--ease-out);
 }
 
 .titlebar-tab[draggable="true"] {
@@ -169,7 +171,7 @@
 }
 
 .titlebar-tab:hover {
-  background-color: rgba(56, 53, 47, 0.06);
+  background-color: rgba(var(--gray-10), 0.06);
 }
 
 .titlebar-tab-active,
@@ -200,7 +202,7 @@
 }
 
 .titlebar-tab-close:hover {
-  background-color: rgba(56, 53, 47, 0.12);
+  background-color: rgba(var(--gray-10), 0.12);
 }
 
 .titlebar-tab-close svg {
@@ -233,7 +235,7 @@
 }
 
 .titlebar-btn:hover {
-  background-color: rgba(56, 53, 47, 0.06);
+  background-color: rgba(var(--gray-10), 0.06);
 }
 
 .titlebar-btn svg {
@@ -277,7 +279,7 @@
 }
 
 .window-control-btn:hover {
-  background-color: rgba(56, 53, 47, 0.06);
+  background-color: rgba(var(--gray-10), 0.06);
 }
 
 .window-control-btn-close:hover {

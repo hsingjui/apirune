@@ -166,6 +166,7 @@ export default function WsEditor() {
           <div className="ws-log-empty">{t("ws.empty")}</div>
         ) : (
           messages.map((message, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: 消息日志仅追加（清空时整体重建），顺序稳定
             <div key={index} className={`ws-message ws-message-${message.dir}`}>
               <span className="ws-message-meta">
                 <span className="ws-message-dir">

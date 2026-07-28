@@ -28,7 +28,14 @@ interface TitleBarProps {
 
 const DRAG_TAB_TYPE = "text/apirune-project-tab";
 
-function TitleBar({ tabs, activeId, onSelectTab, onCloseTab, onReorderTabs, onRefresh }: TitleBarProps) {
+function TitleBar({
+  tabs,
+  activeId,
+  onSelectTab,
+  onCloseTab,
+  onReorderTabs,
+  onRefresh,
+}: TitleBarProps) {
   const { t } = useI18n();
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

@@ -42,6 +42,19 @@
       "tailwindDirectives": true
     }
   },
+  "overrides": [
+    {
+      // !important 均为覆盖 CodeMirror 内建主题（带高特异性结构链）所必需，见文件内注释说明
+      "includes": ["src/components/RequestEditor.css"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "double",

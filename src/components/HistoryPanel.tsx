@@ -111,7 +111,7 @@ function HistoryPanel({ projectId, onRestore }: HistoryPanelProps) {
 
   // 二进制响应（Base64 存储）：图片类型生成 data URL 预览
   const detailImageUrl = useMemo(() => {
-    if (!detail || detail.responseBodyEncoding !== "base64") return null;
+    if (detail?.responseBodyEncoding !== "base64") return null;
     const contentType = (detail.responseHeaders["content-type"] ?? "")
       .split(";")[0]
       .trim()
@@ -607,6 +607,7 @@ function HeaderTable({
       ) : (
         <div className="history-kv-table">
           {rows.map(([key, value], index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: 键名可能重复（如同名 header），索引仅用于去重
             <div key={`${key}-${index}`} className="history-kv-row">
               <span className="history-kv-key">{key}</span>
               <span className="history-kv-value">{value}</span>

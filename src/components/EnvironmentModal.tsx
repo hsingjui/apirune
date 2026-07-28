@@ -303,6 +303,7 @@ function VariableTable({
       {[...items, { name: "", value: "" }].map((item, index) => {
         const isPlaceholder = index === items.length;
         return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 受控键值行 + 末尾占位行，数据项无稳定 id，以索引定位（与 updateItem(index) 对应）
           <div key={index} className="env-table-row env-table-grid">
             <input
               placeholder={isPlaceholder ? t("env.addVar") : t("env.varName")}
@@ -394,6 +395,7 @@ function GlobalParamTable({
         {[...current, { in: activeIn, name: "", value: "" }].map((item, index) => {
           const isPlaceholder = index === current.length;
           return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: 受控键值行 + 末尾占位行，数据项无稳定 id，以索引定位
             <div key={index} className="env-table-row env-table-grid">
               <input
                 placeholder={isPlaceholder ? t("env.addParam") : t("env.paramName")}

@@ -233,7 +233,9 @@ function OpenApiImportModal({ visible, projectId, onCancel, onImported }: OpenAp
 
   const toggleAllOperations = () => {
     if (!parsed) return;
-    setSelectedKeys((keys) => (keys.size === parsed.operationCount ? new Set() : allOperationKeys(parsed)));
+    setSelectedKeys((keys) =>
+      keys.size === parsed.operationCount ? new Set() : allOperationKeys(parsed),
+    );
   };
 
   const importSelected = async () => {
@@ -384,7 +386,10 @@ function OpenApiImportModal({ visible, projectId, onCancel, onImported }: OpenAp
             {t("common.cancel")}
           </Button>
           {parsed && (
-            <Button disabled={selectedKeys.size === 0 || importing} onClick={() => void importSelected()}>
+            <Button
+              disabled={selectedKeys.size === 0 || importing}
+              onClick={() => void importSelected()}
+            >
               {t("openapiImport.importSelected", { count: selectedKeys.size })}
             </Button>
           )}

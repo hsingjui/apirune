@@ -133,6 +133,7 @@ function CodegenModal({ visible, input, onClose }: CodegenModalProps) {
                 <pre className="codegen-code">
                   <code>
                     {lines.map((tokens, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: 代码高亮行为静态渲染，顺序不变
                       <div className="codegen-line" key={index}>
                         <span className="codegen-line-no" aria-hidden="true">
                           {index + 1}
@@ -141,6 +142,7 @@ function CodegenModal({ visible, input, onClose }: CodegenModalProps) {
                           {tokens.length > 0
                             ? tokens.map((token, tokenIndex) =>
                                 token.type ? (
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: 行内语法 token 为静态渲染，顺序不变
                                   <span key={tokenIndex} className={`codegen-tok-${token.type}`}>
                                     {token.text}
                                   </span>

@@ -42,12 +42,12 @@
 }
 
 .codegen-lang:hover {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
 }
 
 .codegen-lang-active,
 .codegen-lang-active:hover {
-  background-color: rgba(56, 53, 47, 0.08);
+  background-color: rgba(var(--gray-10), 0.08);
   font-weight: 600;
 }
 
@@ -142,7 +142,7 @@
   gap: 2px;
   padding: 2px;
   border-radius: 8px;
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
 }
 
 .codegen-tab {
@@ -195,7 +195,7 @@
 
 .codegen-copy:hover {
   color: var(--c-ink-primary);
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
 }
 
 .codegen-copy svg {

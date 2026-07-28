@@ -524,6 +524,7 @@ function SettingsModal({ visible, onClose }: SettingsModalProps) {
                                 </span>
                               ) : combo ? (
                                 formatCombo(combo).map((key, index) => (
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: 快捷键组合为静态展示，顺序不变
                                   <kbd key={`${key}-${index}`} className="settings-kbd">
                                     {key}
                                   </kbd>
@@ -545,12 +546,14 @@ function SettingsModal({ visible, onClose }: SettingsModalProps) {
                           </span>
                           <span className="settings-shortcut-keys">
                             {formatCombo(`${MOD}+1`).map((key, i) => (
+                              // biome-ignore lint/suspicious/noArrayIndexKey: 快捷键组合为静态展示，顺序不变
                               <kbd key={`goto1-${i}`} className="settings-kbd">
                                 {key}
                               </kbd>
                             ))}
                             <span className="settings-shortcut-sep">{t("settings.to")}</span>
                             {formatCombo(`${MOD}+9`).map((key, i) => (
+                              // biome-ignore lint/suspicious/noArrayIndexKey: 快捷键组合为静态展示，顺序不变
                               <kbd key={`goto9-${i}`} className="settings-kbd">
                                 {key}
                               </kbd>

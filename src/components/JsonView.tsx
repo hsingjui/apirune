@@ -22,8 +22,8 @@ import CodeMirror, {
   type Panel,
   RangeSetBuilder,
   runScopeHandlers,
-  type ViewUpdate,
   ViewPlugin,
+  type ViewUpdate,
 } from "@uiw/react-codemirror";
 import { CircleAlert, Copy } from "lucide-react";
 import { useMemo } from "react";
@@ -304,7 +304,7 @@ function getPropertyValue(view: EditorView, event: MouseEvent): string | null {
     const property = view.state.sliceDoc(node.from, node.to);
     const parsed = parseJsonWithComments(`{${property}}`) as Record<string, unknown>;
     const value = Object.values(parsed)[0];
-    return typeof value === "string" ? value : JSON.stringify(value) ?? null;
+    return typeof value === "string" ? value : (JSON.stringify(value) ?? null);
   } catch {
     return null;
   }

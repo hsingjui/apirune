@@ -84,6 +84,25 @@ export function useCloseTabInterceptor(handler: () => boolean) {
 /** 执行 closeTab 拦截器，无拦截器时返回 false */
 export const runCloseTabInterceptor = () => closeTabInterceptor?.() ?? false;
 
+// nextTab/prevTab 拦截器：工作区打开多个请求标签时优先在请求标签间循环，而非切换项目。
+// 与 closeTab 拦截器同理，单个槽位即可。
+let tabCycleInterceptor: ((step: number) => boolean) | null = null;
+
+/** 注册标签循环拦截器；返回 true 表示已消费本次 nextTab/prevTab */
+export function useTabCycleInterceptor(handler: (step: number) => boolean) {
+  const ref = useRef(handler);
+  ref.current = handler;
+  useEffect(() => {
+    tabCycleInterceptor = (step) => ref.current(step);
+    return () => {
+      tabCycleInterceptor = null;
+    };
+  }, []);
+}
+
+/** 执行标签循环拦截器，无拦截器或未消费时返回 false */
+export const runTabCycleInterceptor = (step: number) => tabCycleInterceptor?.(step) ?? false;
+
 /** 订阅某个快捷键动作，handler 始终取最新闭包 */
 export function useShortcutAction(
   action: ShortcutAction | "gotoTab",

@@ -14,11 +14,24 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type SyntheticEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useCloseTabInterceptor, useShortcutAction } from "../hooks/useShortcuts";
+import { getMethodColor } from "../constants/methods";
+import { usePersistentState } from "../hooks/usePersistentState";
+import {
+  useCloseTabInterceptor,
+  useShortcutAction,
+  useTabCycleInterceptor,
+} from "../hooks/useShortcuts";
 import { getLanguage, useI18n } from "../i18n";
 import { listEnvironments, loadActiveEnvId, saveActiveEnvId } from "../lib/environments";
 import type { Environment } from "../types/environment";
@@ -60,6 +73,8 @@ interface RequestTab {
   /** 标签类型；缺省为快捷请求，ws 为 WebSocket 连接 */
   kind?: "ws";
   initial?: ParsedCurl;
+  /** 标签上展示的请求方法徽标；新建空白快捷请求缺省 */
+  method?: string;
   /** 对应已保存请求的 id，用于避免重复打开 */
   requestId?: string;
   /** 已保存请求所在目录，null 为根级；保存弹窗回填用 */
@@ -72,6 +87,35 @@ interface RequestTab {
 export interface RequestTabState {
   tabs: RequestTab[];
   activeId: string | null;
+}
+
+/** 请求标签的名称：超出标签宽度被截断时，用统一样式的 Tooltip 悬浮展示完整名称 */
+function RequestTabLabel({ name }: { name: string }) {
+  const nameRef = useRef<HTMLSpanElement>(null);
+  const [truncated, setTruncated] = useState(false);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 名称变更但元素宽度不变时 ResizeObserver 不会触发，需要依赖 name 重新检测
+  useEffect(() => {
+    const el = nameRef.current;
+    if (!el) return;
+    // scrollWidth > clientWidth 表示出现省略号截断；标签增删、窗口缩放会改变溢出状态，用 ResizeObserver 实时更新
+    const check = () => setTruncated(el.scrollWidth > el.clientWidth);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [name]);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span ref={nameRef} className="workspace-request-tab-name">
+          {name}
+        </span>
+      </TooltipTrigger>
+      {truncated && <TooltipContent className="max-w-80 break-all">{name}</TooltipContent>}
+    </Tooltip>
+  );
 }
 
 /** 左侧导航栏条目；labelKey 为文案 key，渲染时翻译 */
@@ -93,27 +137,37 @@ const QUICK_ACTIONS: {
     key: "quick",
     labelKey: "workspace.quickRequest",
     descKey: "workspace.quickRequestDesc",
-    color: "#f7ba1e",
+    color: "var(--pi-amber)",
     Icon: Zap,
   },
   {
     key: "ws",
     labelKey: "workspace.newWs",
     descKey: "workspace.newWsDesc",
-    color: "#0fc6c2",
+    color: "var(--pi-teal)",
     Icon: Cable,
   },
   {
     key: "import",
     labelKey: "workspace.importData",
     descKey: "workspace.importDataDesc",
-    color: "#00b42a",
+    color: "var(--pi-green)",
     Icon: Import,
   },
 ];
 
-/** 环境徽标配色：按环境顺序循环取色 */
-const ENV_BADGE_COLORS = ["#722ed1", "#0fc6c2", "#f5319d", "#165dff", "#ff7d00", "#00b42a"];
+/** 环境徽标配色：按环境顺序循环取色；用 --pi-* OKLCH 令牌，深浅主题自动调整明度 */
+const ENV_BADGE_COLORS = [
+  "var(--pi-violet)",
+  "var(--pi-teal)",
+  "var(--pi-pink)",
+  "var(--pi-blue)",
+  "var(--pi-orange)",
+  "var(--pi-green)",
+];
+
+/** 令牌色的柔和底色：color-mix 对 var() 与十六进制均适用（十六进制无法用于 var() 时追加透明度） */
+const softColorBg = (value: string) => `color-mix(in srgb, ${value} 10%, transparent)`;
 
 function formatDateTime(timestamp: number): string {
   return new Date(timestamp).toLocaleString(getLanguage(), {
@@ -138,7 +192,14 @@ function ProjectWorkspace({
   const { t } = useI18n();
   const [section, setSection] = useState<SectionKey>("apis");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(264);
+  // 侧栏宽度全局持久化，重开应用后恢复上次拖拽的宽度
+  const [sidebarWidth, setSidebarWidth] = usePersistentState("apirune:sidebar-width", 264);
+  // 各标签的未保存标记：编辑器内容相对保存基准变化时上报
+  const [dirtyTabs, setDirtyTabs] = useState<Record<string, boolean>>({});
+  // 待确认的关闭操作：关闭含未保存内容的标签前先弹确认框
+  const [pendingClose, setPendingClose] = useState<
+    { kind: "one"; id: string } | { kind: "all" } | { kind: "others" } | null
+  >(null);
   const [keyword, setKeyword] = useState("");
   // 快捷请求标签页：点击加号 / 快捷请求卡片创建，全部关闭后回到快捷入口
   const [requestTabs, setRequestTabs] = useState<RequestTab[]>(() => requestTabState?.tabs ?? []);
@@ -157,10 +218,35 @@ function ProjectWorkspace({
   // 主页导入 cURL 去重：StrictMode 下 effect 重复执行时按引用判重，避免开出两个标签
   const initialCurlRef = useRef<ParsedCurl | null>(null);
   const activeEnv = environments.find((env) => env.id === activeEnvId) ?? null;
+  // 触发按钮上的彩色圆点：与下拉菜单中的徽标取同一色板，便于一眼识别当前环境
+  const activeEnvIndex = environments.findIndex((env) => env.id === activeEnvId);
+  const activeEnvColor =
+    activeEnvIndex >= 0 ? ENV_BADGE_COLORS[activeEnvIndex % ENV_BADGE_COLORS.length] : null;
 
   useEffect(() => {
     onRequestTabStateChange?.(project.id, { tabs: requestTabs, activeId: activeRequestId });
   }, [activeRequestId, onRequestTabStateChange, project.id, requestTabs]);
+
+  // 标签过多溢出时，激活标签变化 / 新开标签后自动滚动到可见区域；已在可视区内则不动
+  const tabsScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // 「更多」菜单为 fixed 定位（脱离标签滚动容器裁剪）：鼠标进入 / 聚焦触发按钮时，
+  // 同步测量按钮视口坐标并写入菜单样式，保证悬停展开前位置已就绪
+  const positionMoreMenu = (event: SyntheticEvent<HTMLDivElement>) => {
+    const menu = event.currentTarget.querySelector<HTMLElement>(".workspace-more-menu");
+    if (!menu) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    menu.style.top = `${rect.bottom + 6}px`;
+    menu.style.left = `${rect.left}px`;
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 标签增删（requestTabs 变化）时也要重新检查激活标签的可见性，函数体内不直接引用属刻意为之
+  useEffect(() => {
+    const container = tabsScrollRef.current;
+    if (!container || activeRequestId === null) return;
+    container
+      .querySelector('[aria-selected="true"]')
+      ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  }, [activeRequestId, requestTabs]);
 
   /** 选中环境并持久化到数据库，下次打开项目时恢复 */
   const selectEnvironment = (envId: string | null) => {
@@ -218,7 +304,7 @@ function ProjectWorkspace({
       requestTabs
         .filter((tab) => tab.kind !== "ws")
         .reduce((max, tab) => Math.max(max, tab.seq), 0) + 1;
-    const tab: RequestTab = { id: createId(), seq, initial };
+    const tab: RequestTab = { id: createId(), seq, initial, method: initial?.method };
     setRequestTabs((tabs) => [...tabs, tab]);
     setActiveRequestId(tab.id);
   };
@@ -249,6 +335,7 @@ function ProjectWorkspace({
       requestId: request.id,
       folderId: request.folderId,
       name: request.name,
+      method: request.method,
       initial: {
         method: request.method,
         url: request.url,
@@ -308,14 +395,30 @@ function ProjectWorkspace({
   // 快捷键：打开全局搜索
   useShortcutAction("globalSearch", () => setSearchVisible(true));
 
-  const closeRequestTab = (id: string) => {
+  /** 实际执行关闭单个标签（不做未保存检查） */
+  const doCloseRequestTab = (id: string) => {
     const index = requestTabs.findIndex((tab) => tab.id === id);
     const nextTabs = requestTabs.filter((tab) => tab.id !== id);
     setRequestTabs(nextTabs);
+    setDirtyTabs((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     // 关闭当前标签时，优先切到左侧标签，其次右侧，最后回到快捷入口
     if (activeRequestId === id) {
       setActiveRequestId(nextTabs[index - 1]?.id ?? nextTabs[index]?.id ?? null);
     }
+  };
+
+  /** 关闭单个标签：含未保存内容的先弹确认框 */
+  const closeRequestTab = (id: string) => {
+    if (dirtyTabs[id]) {
+      setPendingClose({ kind: "one", id });
+      return;
+    }
+    doCloseRequestTab(id);
   };
 
   // 快捷键：请求管理页有快捷请求标签打开时，⌘W 关闭当前标签而非项目
@@ -325,17 +428,70 @@ function ProjectWorkspace({
     return true;
   });
 
-  /** 关闭全部标签页，回到快捷入口 */
-  const closeAllTabs = () => {
+  /** 实际执行关闭全部（不做未保存检查） */
+  const doCloseAllTabs = () => {
     setRequestTabs([]);
     setActiveRequestId(null);
+    setDirtyTabs({});
+  };
+
+  /** 关闭全部标签页，回到快捷入口；有未保存内容时先确认 */
+  const closeAllTabs = () => {
+    if (requestTabs.some((tab) => dirtyTabs[tab.id])) {
+      setPendingClose({ kind: "all" });
+      return;
+    }
+    doCloseAllTabs();
   };
 
   /** 关闭除当前激活标签外的其它标签页 */
-  const closeOtherTabs = () => {
+  const doCloseOtherTabs = () => {
     if (activeRequestId === null) return;
     setRequestTabs((tabs) => tabs.filter((tab) => tab.id === activeRequestId));
+    setDirtyTabs((prev) =>
+      activeRequestId in prev ? { [activeRequestId]: prev[activeRequestId] } : {},
+    );
   };
+
+  const closeOtherTabs = () => {
+    if (activeRequestId === null) return;
+    if (requestTabs.some((tab) => tab.id !== activeRequestId && dirtyTabs[tab.id])) {
+      setPendingClose({ kind: "others" });
+      return;
+    }
+    doCloseOtherTabs();
+  };
+
+  /** 确认框中的关闭操作：按类型执行 */
+  const confirmPendingClose = () => {
+    if (!pendingClose) return;
+    if (pendingClose.kind === "one") doCloseRequestTab(pendingClose.id);
+    else if (pendingClose.kind === "all") doCloseAllTabs();
+    else doCloseOtherTabs();
+    setPendingClose(null);
+  };
+
+  // 待定关闭涉及的未保存数量 / 单个标签名，用于确认框文案
+  const pendingCloseDirtyCount =
+    pendingClose?.kind === "all"
+      ? requestTabs.filter((tab) => dirtyTabs[tab.id]).length
+      : pendingClose?.kind === "others"
+        ? requestTabs.filter((tab) => tab.id !== activeRequestId && dirtyTabs[tab.id]).length
+        : 1;
+  const pendingCloseTabName =
+    pendingClose?.kind === "one"
+      ? (requestTabs.find((tab) => tab.id === pendingClose.id)?.name ?? t("workspace.quickRequest"))
+      : "";
+
+  // 快捷键：工作区打开多个请求标签时，nextTab/prevTab 优先在请求标签间循环
+  useTabCycleInterceptor((step) => {
+    if (section !== "apis" || activeRequestId === null || requestTabs.length < 2) return false;
+    const index = requestTabs.findIndex((tab) => tab.id === activeRequestId);
+    if (index < 0) return false;
+    const next = requestTabs[(index + step + requestTabs.length) % requestTabs.length];
+    setActiveRequestId(next.id);
+    return true;
+  });
 
   const handleQuickAction = (key: string) => {
     if (key === "quick") {
@@ -356,7 +512,13 @@ function ProjectWorkspace({
     setRequestTabs((tabs) =>
       tabs.map((tab) =>
         tab.id === tabId
-          ? { ...tab, requestId: request.id, name: request.name, folderId: request.folderId }
+          ? {
+              ...tab,
+              requestId: request.id,
+              name: request.name,
+              folderId: request.folderId,
+              method: request.method,
+            }
           : tab,
       ),
     );
@@ -546,101 +708,140 @@ function ProjectWorkspace({
                       <TooltipContent>{t("workspace.expandSidebar")}</TooltipContent>
                     </Tooltip>
                   )}
-                  {requestTabs.map((tab) => (
-                    <div
-                      key={tab.id}
-                      role="tab"
-                      aria-selected={activeRequestId === tab.id}
-                      tabIndex={0}
-                      className={`workspace-request-tab${activeRequestId === tab.id ? " workspace-request-tab-active" : ""}`}
-                      onClick={() => setActiveRequestId(tab.id)}
-                      onAuxClick={(event) => {
-                        if (event.button !== 1) return;
-                        event.preventDefault();
-                        closeRequestTab(tab.id);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setActiveRequestId(tab.id);
-                        }
-                      }}
-                    >
-                      {tab.kind === "ws" ? (
-                        <Cable className="workspace-request-tab-icon" />
-                      ) : (
-                        <Zap className="workspace-request-tab-icon" />
-                      )}
-                      <span className="workspace-request-tab-name">
-                        {tab.name ??
-                          (tab.kind === "ws"
-                            ? `WebSocket${tab.seq > 1 ? ` ${tab.seq}` : ""}`
-                            : `${t("workspace.quickRequest")}${tab.seq > 1 ? ` ${tab.seq}` : ""}`)}
-                      </span>
-                      <button
-                        type="button"
-                        className="workspace-request-tab-close"
-                        title={t("common.close")}
-                        aria-label={t("workspace.closeQuickRequest")}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          closeRequestTab(tab.id);
-                        }}
+                  <div
+                    ref={tabsScrollRef}
+                    className="workspace-tabs-scroll"
+                    // 标签过多时横向滚动：纵向滚轮映射为横向，避免挤压右侧环境组件
+                    onWheel={(event) => {
+                      event.currentTarget.scrollLeft += event.deltaY;
+                    }}
+                  >
+                    {requestTabs.map((tab) => {
+                      const tabName =
+                        tab.name ??
+                        (tab.kind === "ws"
+                          ? `WebSocket${tab.seq > 1 ? ` ${tab.seq}` : ""}`
+                          : `${t("workspace.quickRequest")}${tab.seq > 1 ? ` ${tab.seq}` : ""}`);
+                      return (
+                        <div
+                          key={tab.id}
+                          role="tab"
+                          aria-selected={activeRequestId === tab.id}
+                          tabIndex={0}
+                          className={`workspace-request-tab${activeRequestId === tab.id ? " workspace-request-tab-active" : ""}`}
+                          onClick={() => setActiveRequestId(tab.id)}
+                          // 标签位于横向滚动容器内，中键按下会触发浏览器 autoscroll 并吞掉 auxclick；
+                          // 在中键 mousedown 阶段阻止默认行为，保证下面的 onAuxClick 能收到点击
+                          onMouseDown={(event) => {
+                            if (event.button === 1) event.preventDefault();
+                          }}
+                          onAuxClick={(event) => {
+                            if (event.button !== 1) return;
+                            event.preventDefault();
+                            closeRequestTab(tab.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              setActiveRequestId(tab.id);
+                            }
+                          }}
+                        >
+                          {tab.kind === "ws" ? (
+                            <Cable className="workspace-request-tab-icon" />
+                          ) : tab.method ? (
+                            <span
+                              className="workspace-request-tab-method"
+                              style={{ color: getMethodColor(tab.method) }}
+                            >
+                              {tab.method}
+                            </span>
+                          ) : (
+                            <Zap className="workspace-request-tab-icon" />
+                          )}
+                          <RequestTabLabel name={tabName} />
+                          {dirtyTabs[tab.id] && (
+                            <span
+                              className="workspace-request-tab-dirty"
+                              title={t("workspace.unsavedChanges")}
+                              aria-hidden="true"
+                            />
+                          )}
+                          <button
+                            type="button"
+                            className="workspace-request-tab-close"
+                            title={t("common.close")}
+                            aria-label={t("workspace.closeQuickRequest")}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              closeRequestTab(tab.id);
+                            }}
+                          >
+                            <X />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {/* 尾部操作区：不溢出时跟在最后一个标签后面；溢出时吸附固定在可视区右端 */}
+                    <div className="workspace-tab-actions">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="workspace-toolbar-btn"
+                            aria-label={t("workspace.newQuickRequest")}
+                            onClick={() => addRequestTab()}
+                          >
+                            <Plus />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("workspace.newQuickRequest")}</TooltipContent>
+                      </Tooltip>
+                      <div
+                        className="workspace-more"
+                        onMouseEnter={positionMoreMenu}
+                        onFocus={positionMoreMenu}
                       >
-                        <X />
-                      </button>
-                    </div>
-                  ))}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="workspace-toolbar-btn"
-                        aria-label={t("workspace.newQuickRequest")}
-                        onClick={() => addRequestTab()}
-                      >
-                        <Plus />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("workspace.newQuickRequest")}</TooltipContent>
-                  </Tooltip>
-                  <div className="workspace-more">
-                    <button
-                      type="button"
-                      className="workspace-toolbar-btn"
-                      aria-label={t("workspace.more")}
-                      aria-haspopup="menu"
-                    >
-                      <MoreHorizontal />
-                    </button>
-                    <div className="workspace-more-menu" role="menu" onClick={closeHoverMenu}>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="workspace-more-menu-item"
-                        disabled={requestTabs.length === 0}
-                        onClick={closeAllTabs}
-                      >
-                        {t("workspace.closeAll")}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="workspace-more-menu-item"
-                        disabled={activeRequestId === null}
-                        onClick={() => activeRequestId !== null && closeRequestTab(activeRequestId)}
-                      >
-                        {t("workspace.closeCurrent")}
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="workspace-more-menu-item"
-                        disabled={activeRequestId === null || requestTabs.length < 2}
-                        onClick={closeOtherTabs}
-                      >
-                        {t("workspace.closeOthers")}
-                      </button>
+                        <button
+                          type="button"
+                          className="workspace-toolbar-btn"
+                          aria-label={t("workspace.more")}
+                          aria-haspopup="menu"
+                        >
+                          <MoreHorizontal />
+                        </button>
+                        <div className="workspace-more-menu" role="menu" onClick={closeHoverMenu}>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="workspace-more-menu-item"
+                            disabled={requestTabs.length === 0}
+                            onClick={closeAllTabs}
+                          >
+                            {t("workspace.closeAll")}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="workspace-more-menu-item"
+                            disabled={activeRequestId === null}
+                            onClick={() =>
+                              activeRequestId !== null && closeRequestTab(activeRequestId)
+                            }
+                          >
+                            {t("workspace.closeCurrent")}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className="workspace-more-menu-item"
+                            disabled={activeRequestId === null || requestTabs.length < 2}
+                            onClick={closeOtherTabs}
+                          >
+                            {t("workspace.closeOthers")}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -660,6 +861,13 @@ function ProjectWorkspace({
                       aria-expanded={envMenuOpen}
                       onClick={() => setEnvMenuOpen((open) => !open)}
                     >
+                      {activeEnvColor && (
+                        <span
+                          className="workspace-env-dot"
+                          style={{ backgroundColor: activeEnvColor }}
+                          aria-hidden="true"
+                        />
+                      )}
                       <span
                         className={`workspace-env-value${activeEnv ? "" : " workspace-env-placeholder"}`}
                       >
@@ -692,7 +900,7 @@ function ProjectWorkspace({
                             >
                               <span
                                 className="workspace-env-item-badge"
-                                style={{ color, backgroundColor: `${color}14` }}
+                                style={{ color, backgroundColor: softColorBg(color) }}
                                 aria-hidden="true"
                               >
                                 {env.name.trim().charAt(0) || t("env.badgeFallback")}
@@ -751,6 +959,11 @@ function ProjectWorkspace({
                       initialFolderId={tab.folderId}
                       onSaved={(request) => handleRequestSaved(tab.id, request)}
                       onEnvChanged={reloadEnvironments}
+                      onDirtyChange={(dirty) =>
+                        setDirtyTabs((prev) =>
+                          prev[tab.id] === dirty ? prev : { ...prev, [tab.id]: dirty },
+                        )
+                      }
                     />
                   )}
                 </div>
@@ -768,7 +981,7 @@ function ProjectWorkspace({
                       >
                         <span
                           className="workspace-action-icon"
-                          style={{ color, backgroundColor: `${color}14` }}
+                          style={{ color, backgroundColor: softColorBg(color) }}
                         >
                           <Icon />
                         </span>
@@ -846,6 +1059,32 @@ function ProjectWorkspace({
           openRequestTab(request);
         }}
       />
+
+      {/* 未保存关闭确认：关闭标签 / 全部 / 其它时若有未保存内容先确认 */}
+      <Dialog open={pendingClose !== null} onOpenChange={(open) => !open && setPendingClose(null)}>
+        <DialogContent
+          className="sm:max-w-[420px]"
+          showCloseButton={false}
+          aria-describedby={undefined}
+        >
+          <DialogHeader>
+            <DialogTitle>{t("workspace.unsavedCloseTitle")}</DialogTitle>
+          </DialogHeader>
+          <p className="workspace-unsaved-close-hint">
+            {pendingClose?.kind === "one"
+              ? t("workspace.unsavedCloseOne", { name: pendingCloseTabName })
+              : t("workspace.unsavedCloseMany", { count: pendingCloseDirtyCount })}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingClose(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={confirmPendingClose}>
+              {t("workspace.closeAnyway")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

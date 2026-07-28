@@ -9,6 +9,7 @@ import TitleBar from "./components/TitleBar";
 import { usePersistentState } from "./hooks/usePersistentState";
 import {
   runCloseTabInterceptor,
+  runTabCycleInterceptor,
   useShortcutAction,
   useShortcutListener,
 } from "./hooks/useShortcuts";
@@ -250,8 +251,21 @@ function App() {
     const current = ids.indexOf(activeProject?.id ?? null);
     setActiveId(ids[(current + step + ids.length) % ids.length]);
   };
-  useShortcutAction("nextTab", () => cycleTab(1), openTabs.length > 0);
-  useShortcutAction("prevTab", () => cycleTab(-1), openTabs.length > 0);
+  // 工作区有多个请求标签时，优先在请求标签间循环（由拦截器消费），否则切换项目标签
+  useShortcutAction(
+    "nextTab",
+    () => {
+      if (!runTabCycleInterceptor(1)) cycleTab(1);
+    },
+    openTabs.length > 0,
+  );
+  useShortcutAction(
+    "prevTab",
+    () => {
+      if (!runTabCycleInterceptor(-1)) cycleTab(-1);
+    },
+    openTabs.length > 0,
+  );
   useShortcutAction(
     "gotoTab",
     (index) => {

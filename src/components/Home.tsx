@@ -227,7 +227,11 @@ function Home({
           </span>
           <ChevronRight className="home-quick-arrow" />
         </button>
-        <button type="button" className="home-quick-card home-quick-card-import" onClick={onImportRequest}>
+        <button
+          type="button"
+          className="home-quick-card home-quick-card-import"
+          onClick={onImportRequest}
+        >
           <span className="home-quick-icon">
             <Import />
           </span>
@@ -333,7 +337,9 @@ function Home({
                       <span className="project-card-name">{project.name}</span>
                       <span className="project-card-time">
                         {projectStats.lastSentAt && isToday(projectStats.lastSentAt)
-                          ? t("home.lastSentAt", { time: formatRelativeTime(projectStats.lastSentAt) })
+                          ? t("home.lastSentAt", {
+                              time: formatRelativeTime(projectStats.lastSentAt),
+                            })
                           : t("home.notSentToday")}
                       </span>
                     </div>
@@ -371,12 +377,15 @@ function Home({
                   {envNames.length > 0 && (
                     <div className="project-card-foot">
                       {envNames.slice(0, MAX_ENV_BADGES).map((name, envIndex) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: 环境名可能重复，索引仅用于去重
                         <span key={`${name}-${envIndex}`} className="project-card-env">
                           {name}
                         </span>
                       ))}
                       {envNames.length > MAX_ENV_BADGES && (
-                        <span className="project-card-env">+{envNames.length - MAX_ENV_BADGES}</span>
+                        <span className="project-card-env">
+                          +{envNames.length - MAX_ENV_BADGES}
+                        </span>
                       )}
                     </div>
                   )}
@@ -409,6 +418,7 @@ function Home({
                   <span className="home-shortcut-name">{t(`shortcuts.${action}`)}</span>
                   <span className="home-shortcut-keys">
                     {keys.map((key, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: 快捷键组合为静态展示，顺序不变
                       <kbd key={`${key}-${index}`}>{key}</kbd>
                     ))}
                   </span>

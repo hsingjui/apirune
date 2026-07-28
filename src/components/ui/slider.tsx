@@ -43,6 +43,7 @@ function Slider({
         />
       </SliderPrimitive.Track>
       {Array.from({ length: _values.length }, (_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: thumb 数量仅随取值数组长度变化，顺序稳定
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}

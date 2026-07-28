@@ -194,7 +194,7 @@
 }
 
 .history-item:hover {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
 }
 
 .history-item-active,

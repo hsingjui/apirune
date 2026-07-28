@@ -137,6 +137,11 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   "workspace.closeAll": "Close all tabs",
   "workspace.closeCurrent": "Close current tab",
   "workspace.closeOthers": "Close other tabs",
+  "workspace.unsavedChanges": "Unsaved changes",
+  "workspace.unsavedCloseTitle": "Close Unsaved Tab",
+  "workspace.unsavedCloseOne": '"{name}" has unsaved changes that will be lost.',
+  "workspace.unsavedCloseMany": "{count} tabs have unsaved changes that will be lost.",
+  "workspace.closeAnyway": "Close Anyway",
   "workspace.selectEnv": "Select environment",
   "workspace.selectEnvAria": "Select environment",
   "workspace.noEnvs": "No environments yet",
@@ -162,7 +167,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   "apiTree.renameFailed": "Failed to rename",
   "apiTree.duplicateFailed": "Failed to duplicate",
   "apiTree.deleteFailed": "Failed to delete",
-  "apiTree.deleteFolderConfirm": "Delete folder \"{name}\" and all of its subfolders and requests? This cannot be undone.",
+  "apiTree.deleteFolderConfirm":
+    'Delete folder "{name}" and all of its subfolders and requests? This cannot be undone.',
 
   // Request editor
   "editor.tabSettings": "Settings",

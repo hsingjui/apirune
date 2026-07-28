@@ -49,10 +49,7 @@ import {
 } from "../lib/http";
 import { createQuickRequest, updateQuickRequest } from "../lib/quickRequests";
 import { loadSettings, toProxyConfig } from "../lib/settings";
-import type {
-  Environment,
-  GlobalParamIn,
-} from "../types/environment";
+import type { Environment, GlobalParamIn } from "../types/environment";
 import type { HttpResponseData, SseEvent } from "../types/http";
 import type { QuickRequest } from "../types/quick";
 import type {
@@ -68,11 +65,7 @@ import { resolveRequestWithEnv } from "../utils/env";
 import { createId } from "../utils/id";
 import { parseJsonWithComments, stripJsonComments } from "../utils/jsonc";
 import CodegenModal from "./CodegenModal";
-import {
-  JsonEditor,
-  JsonViewer,
-  type JsonPropertyContextMenu,
-} from "./JsonView";
+import { JsonEditor, type JsonPropertyContextMenu, JsonViewer } from "./JsonView";
 import SaveRequestModal from "./SaveRequestModal";
 import "./RequestEditor.css";
 
@@ -160,6 +153,8 @@ interface RequestEditorProps {
   onSaved?: (request: QuickRequest) => void;
   /** 环境变量变更回调（如响应提取变量后），由父组件重新加载环境列表 */
   onEnvChanged?: () => void;
+  /** 编辑内容相对保存基准变化时回调，父组件用它在标签页上显示未保存标记 */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /** KeyValueItem[] → 编辑器内部键值对 */
@@ -275,6 +270,7 @@ function RequestEditor({
   initialFolderId,
   onSaved,
   onEnvChanged,
+  onDirtyChange,
 }: RequestEditorProps) {
   useI18n();
   const [method, setMethod] = useState<string>(initial?.method ?? "GET");
@@ -331,7 +327,7 @@ function RequestEditor({
   const [varScope, setVarScope] = useState("global");
   const selectedVariableEnvironment = variableEnvironments.find((item) => item.id === varScope);
   const existingVariables = (
-    varScope === "global" ? globalVariables : selectedVariableEnvironment?.variables ?? []
+    varScope === "global" ? globalVariables : (selectedVariableEnvironment?.variables ?? [])
   ).filter((variable) => variable.name);
   const responseRef = useRef<HTMLElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
@@ -388,6 +384,52 @@ function RequestEditor({
   };
 
   const methodColor = getMethodColor(method);
+
+  // --- 未保存检测：编辑内容序列化为快照，与保存基准对比 ---
+  const snapshot = useMemo(
+    () =>
+      JSON.stringify({
+        method,
+        url: url.trim(),
+        params,
+        pathParams,
+        headers,
+        cookies,
+        bodyType,
+        bodyText,
+        formItems,
+      }),
+    [method, url, params, pathParams, headers, cookies, bodyType, bodyText, formItems],
+  );
+  // 保存基准：初始打开时的快照，保存成功后更新；null 表示尚未建立
+  const savedSnapshotRef = useRef<string | null>(null);
+  const latestSnapshotRef = useRef(snapshot);
+  latestSnapshotRef.current = snapshot;
+  const dirtyRef = useRef(false);
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
+
+  useEffect(() => {
+    if (savedSnapshotRef.current === null) {
+      savedSnapshotRef.current = snapshot;
+      return;
+    }
+    const dirty = snapshot !== savedSnapshotRef.current;
+    if (dirty !== dirtyRef.current) {
+      dirtyRef.current = dirty;
+      onDirtyChangeRef.current?.(dirty);
+    }
+  }, [snapshot]);
+
+  /** 保存成功后以当前快照为新基准，清除未保存标记 */
+  const markSaved = () => {
+    savedSnapshotRef.current = latestSnapshotRef.current;
+    if (dirtyRef.current) {
+      dirtyRef.current = false;
+      onDirtyChangeRef.current?.(false);
+    }
+  };
+
   /** 响应状态摘要：状态码 / 耗时 / 大小，折叠与展开的头部共用 */
   const responseMeta = response && (
     <span className="request-response-meta">
@@ -408,7 +450,7 @@ function RequestEditor({
   // 二进制响应：图片类型生成 data URL 预览，其余提示保存到文件
   const isBinaryResponse = response?.bodyEncoding === "base64";
   const imageDataUrl = useMemo(() => {
-    if (!response || response.bodyEncoding !== "base64") return null;
+    if (response?.bodyEncoding !== "base64") return null;
     const contentType = (response.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
     return contentType.startsWith("image/") ? `data:${contentType};base64,${response.body}` : null;
   }, [response]);
@@ -549,6 +591,7 @@ function RequestEditor({
         ? await updateQuickRequest(requestId, { name, folderId, ...buildRequestInput() })
         : await createQuickRequest({ projectId, name, folderId, ...buildRequestInput() });
       setSaveModalVisible(false);
+      markSaved();
       toast.success(t("editor.saveSuccess"));
       onSaved?.(saved);
     } catch (error) {
@@ -565,6 +608,7 @@ function RequestEditor({
     }
     try {
       const saved = await updateQuickRequest(requestId, buildRequestInput());
+      markSaved();
       toast.success(t("editor.saveSuccess"));
       onSaved?.(saved);
     } catch (error) {
@@ -621,7 +665,13 @@ function RequestEditor({
     event.preventDefault();
     event.stopPropagation();
     setVarMenu(null);
-    setGlobalParamMenu({ x: event.clientX, y: event.clientY, in: paramIn, name, value: item.value });
+    setGlobalParamMenu({
+      x: event.clientX,
+      y: event.clientY,
+      in: paramIn,
+      name,
+      value: item.value,
+    });
   };
 
   /** 写入全局参数；同类型同名参数由数据层覆盖，避免重复注入 */
@@ -1067,8 +1117,7 @@ function RequestEditor({
             </div>
           </div>
         ) : response ? (
-          <>
-            {responseTab === "Request" ? (
+            responseTab === "Request" ? (
               <div className="request-response-body response-actual">
                 <p className="response-actual-label">{t("editor.requestUrl")}:</p>
                 <div className="response-actual-url">
@@ -1141,12 +1190,14 @@ function RequestEditor({
               />
             ) : responseJson !== null ? (
               <div className="request-response-body request-response-json">
-                <JsonViewer value={responseJson} onPropertyContextMenu={handleJsonPropertyContextMenu} />
+                <JsonViewer
+                  value={responseJson}
+                  onPropertyContextMenu={handleJsonPropertyContextMenu}
+                />
               </div>
             ) : (
               <pre className="request-response-body">{response.body}</pre>
-            )}
-          </>
+            )
         ) : sending || sseEvents.length > 0 ? (
           // 流式接收中（或取消后保留已收事件）：直接展示时间线
           sseEvents.length > 0 ? (
@@ -1225,6 +1276,7 @@ function RequestEditor({
             <DialogTitle>{t("editor.setAsVariable")}</DialogTitle>
           </DialogHeader>
           <div className="response-var-form">
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: label 包裹的 VariableNameInput 内部渲染原生 input，隐式关联有效 */}
             <label className="response-var-field">
               <span>{t("editor.varName")}</span>
               <VariableNameInput
@@ -1247,7 +1299,7 @@ function RequestEditor({
                 <SelectTrigger className="response-var-scope">
                   {varScope === "global"
                     ? t("editor.varScopeGlobal")
-                    : selectedVariableEnvironment?.name ?? environment?.name ?? ""}
+                    : (selectedVariableEnvironment?.name ?? environment?.name ?? "")}
                 </SelectTrigger>
                 <SelectContent position="popper">
                   {variableEnvironments.map((item) => (
@@ -1285,6 +1337,12 @@ function VariableNameInput({
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const listId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // 弹窗打开时聚焦变量名输入框（代替 autoFocus，避免打断辅助技术用户）
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const keyword = value.trim().toLowerCase();
   const filtered = options.filter((item) => item.name.toLowerCase().includes(keyword));
@@ -1318,7 +1376,7 @@ function VariableNameInput({
   return (
     <div className="response-var-combo">
       <input
-        autoFocus
+        ref={inputRef}
         role="combobox"
         aria-expanded={showList}
         aria-controls={listId}
@@ -1350,12 +1408,15 @@ function VariableNameInput({
         <ChevronDown />
       </button>
       {showList && (
+        // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA combobox 模式要求 ul role="listbox"
         <ul className="response-var-options" role="listbox" id={listId}>
           {filtered.map((item, index) => (
             <li
               key={item.name}
               id={`${listId}-${index}`}
+              // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA combobox 模式要求 li role="option"
               role="option"
+              tabIndex={-1}
               aria-selected={index === activeIndex}
               className={`response-var-option${index === activeIndex ? " response-var-option-active" : ""}`}
               // mousedown 抢在输入框 blur 之前完成选择，preventDefault 避免抢焦点
@@ -1383,7 +1444,7 @@ const BATCH_MODES = [
 type BatchMode = (typeof BATCH_MODES)[number]["value"];
 
 function batchSeparator(mode: BatchMode): string {
-  return BATCH_MODES.find((item) => item.value === mode)!.separator;
+  return BATCH_MODES.find((item) => item.value === mode)?.separator ?? ",";
 }
 
 /** 键值对 → 批量编辑文本，每行一条记录 */
@@ -1676,6 +1737,7 @@ function KeyValueTable({
           const isPlaceholder = index === items.length;
           const rowType: FormFieldType = item.fieldType ?? "text";
           return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: 受控键值行 + 末尾占位行，数据项无稳定 id，以索引定位（与 patchItem(index) 对应）
             <div
               key={index}
               className={`request-params-row${typed ? " request-params-typed" : ""}${isPlaceholder ? " request-params-row-draft" : ""}${enableable && !isPlaceholder && item.enabled === false ? " request-params-row-disabled" : ""}${index === hoverRow ? " is-hover" : ""}`}
@@ -1728,7 +1790,7 @@ function KeyValueTable({
                     <span>{rowType}</span>
                   </SelectTrigger>
                   <SelectContent position="popper">
-                    {fieldTypes!.map((type) => (
+                    {fieldTypes?.map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
                       </SelectItem>
@@ -1763,14 +1825,15 @@ function KeyValueTable({
                 </div>
               ) : typed && rowType === "array" ? (
                 <div className="request-array-cell">
-                  {(item.values ?? []).map((value, valueIndex) => (
+                  {(item.values ?? []).map((value, valueIndex, allValues) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: 数组值可重复，仅以索引区分
                     <div key={valueIndex} className="request-array-value">
                       <input
                         placeholder={t("editor.valueN", { n: valueIndex + 1 })}
                         value={value}
                         onChange={(event) =>
                           patchItem(index, {
-                            values: item.values!.map((v, i) =>
+                            values: allValues.map((v, i) =>
                               i === valueIndex ? event.target.value : v,
                             ),
                           })
@@ -1783,7 +1846,7 @@ function KeyValueTable({
                         aria-label={t("editor.deleteValue")}
                         onClick={() =>
                           patchItem(index, {
-                            values: item.values!.filter((_, i) => i !== valueIndex),
+                            values: allValues.filter((_, i) => i !== valueIndex),
                           })
                         }
                       >
@@ -1906,8 +1969,10 @@ function ResponseTable({ columns, rows }: { columns: string[]; rows: string[][] 
         </thead>
         <tbody>
           {rows.map((row, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: 响应详情表格为静态渲染，行序不变
             <tr key={i}>
               {row.map((cell, j) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: 行内单元格为静态渲染，顺序不变
                 <td key={j}>{cell}</td>
               ))}
             </tr>
@@ -1970,7 +2035,7 @@ function SseTimeline({
   const active = activeIndex >= 0 ? events[activeIndex] : null;
   // data 为合法 JSON 时美化展示，否则原文展示
   const detailJson = useMemo(() => {
-    if (!active || active.kind !== "message") return null;
+    if (active?.kind !== "message") return null;
     try {
       return JSON.stringify(JSON.parse(active.data), null, 2);
     } catch {

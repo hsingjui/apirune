@@ -57,14 +57,14 @@
 }
 
 .workspace-rail-item:hover {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
   color: var(--c-ink-primary);
 }
 
 /* 选中态：中性浅底 + 焦陶文字，左侧以指示条点睛 */
 .workspace-rail-item-active,
 .workspace-rail-item-active:hover {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
   color: var(--c-accent);
 }
 
@@ -156,7 +156,7 @@ body.is-sidebar-resizing {
 }
 
 .workspace-sidebar-collapse:hover {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
   color: var(--c-ink-primary);
 }
 
@@ -232,6 +232,7 @@ body.is-sidebar-resizing {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   flex-shrink: 0;
   padding: 8px 16px;
   border-bottom: 1px solid var(--color-neutral-3);
@@ -241,6 +242,40 @@ body.is-sidebar-resizing {
   display: flex;
   align-items: center;
   gap: 4px;
+  /* 占据剩余空间且可收缩，让内部标签区溢出时滚动而非挤压右侧环境组件 */
+  flex: 1;
+  min-width: 0;
+}
+
+/* 标签页横向滚动区：溢出时可横向滑动，隐藏滚动条保持界面干净；
+   禁掉纵向滚动（overflow-x 为 auto 时 overflow-y 会计算出 auto，容器内的“更多”菜单会撑出纵向滚动空间） */
+.workspace-tabs-scroll {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.workspace-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* 尾部操作区（新建/更多）：默认跟在最后一个标签后面自然排列；
+   标签溢出时 sticky 吸附在可视区右端，不透明背景遮住下方滑过的标签 */
+.workspace-tab-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding-left: 8px;
+  background-color: var(--color-bg-2);
 }
 
 .workspace-toolbar-btn {
@@ -262,7 +297,7 @@ body.is-sidebar-resizing {
 }
 
 .workspace-toolbar-btn:hover {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
   color: var(--c-ink-primary);
 }
 
@@ -282,9 +317,10 @@ body.is-sidebar-resizing {
   height: 6px;
 }
 
+/* fixed 定位：跳出标签滚动容器的纵向裁剪，top/left 由 positionMoreMenu 按按钮视口坐标同步写入 */
 .workspace-more-menu {
-  position: absolute;
-  top: calc(100% + 6px);
+  position: fixed;
+  top: 0;
   left: 0;
   z-index: 30;
   display: flex;
@@ -336,7 +372,7 @@ body.is-sidebar-resizing {
 }
 
 .workspace-more-menu-item:hover:not(:disabled) {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
 }
 
 .workspace-more-menu-item:disabled {
@@ -370,7 +406,7 @@ body.is-sidebar-resizing {
 }
 
 .workspace-tree-row:hover {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
 }
 
 .workspace-tree-chevron {
@@ -434,7 +470,7 @@ body.is-sidebar-resizing {
 }
 
 .workspace-tree-add-btn:hover {
-  background-color: rgba(56, 53, 47, 0.08);
+  background-color: rgba(var(--gray-10), 0.08);
   color: var(--c-ink-primary);
 }
 
@@ -469,6 +505,10 @@ body.is-sidebar-resizing {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  /* 标签不收缩，超出滚动区宽度时触发横向滚动 */
+  flex-shrink: 0;
+  /* 滚动吸附定位时预留尾部操作区宽度，避免最后的标签被吸附按钮遮住 */
+  scroll-margin-inline-end: 80px;
   max-width: 180px;
   padding: 5px 8px 5px 10px;
   border-radius: var(--border-radius-medium);
@@ -482,7 +522,7 @@ body.is-sidebar-resizing {
 }
 
 .workspace-request-tab:hover {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
   color: var(--c-ink-primary);
 }
 
@@ -510,6 +550,27 @@ body.is-sidebar-resizing {
   white-space: nowrap;
 }
 
+/* 标签上的请求方法徽标：颜色经内联样式取自 --method-* 令牌，此处只定排版；
+   激活态保留方法色不被 accent 覆盖，多标签时一眼区分请求类型 */
+.workspace-request-tab-method {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding-top: 1px;
+}
+
+/* 未保存标记：主题强调色小圆点，跟在名称后面 */
+.workspace-request-tab-dirty {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--c-accent);
+}
+
 .workspace-request-tab-close {
   display: inline-flex;
   align-items: center;
@@ -530,7 +591,7 @@ body.is-sidebar-resizing {
 }
 
 .workspace-request-tab-close:hover {
-  background-color: rgba(56, 53, 47, 0.1);
+  background-color: rgba(var(--gray-10), 0.1);
   opacity: 1;
 }
 
@@ -553,6 +614,8 @@ body.is-sidebar-resizing {
   position: relative;
   display: inline-flex;
   align-items: stretch;
+  /* 位置固定：标签再多也不挤压环境组件 */
+  flex-shrink: 0;
   border: 1px solid var(--color-neutral-3);
   border-radius: var(--border-radius-medium);
   background-color: var(--c-surface-high);
@@ -573,7 +636,9 @@ body.is-sidebar-resizing {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  width: 112px;
+  /* 留足彩点 + 环境名的空间：最小保持原宽，最长自适应后截断 */
+  min-width: 112px;
+  max-width: 184px;
   padding: 5px 12px;
   border: none;
   border-radius: var(--border-radius-medium) 0 0 var(--border-radius-medium);
@@ -585,13 +650,30 @@ body.is-sidebar-resizing {
 }
 
 .workspace-env:hover {
-  background-color: rgba(56, 53, 47, 0.04);
+  background-color: rgba(var(--gray-10), 0.04);
 }
 
 .workspace-env-value {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 环境触发按钮上的彩色圆点：色板与下拉菜单徽标一致 */
+.workspace-env-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* 未保存关闭确认框的提示文字 */
+.workspace-unsaved-close-hint {
+  margin: 0;
+  color: var(--c-ink-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .workspace-env-placeholder {
@@ -624,7 +706,7 @@ body.is-sidebar-resizing {
 }
 
 .workspace-env-manage:hover {
-  background-color: rgba(56, 53, 47, 0.04);
+  background-color: rgba(var(--gray-10), 0.04);
   color: var(--c-ink-primary);
 }
 
@@ -676,7 +758,7 @@ body.is-sidebar-resizing {
 
 .workspace-env-item:hover,
 .workspace-env-item-active {
-  background-color: rgba(56, 53, 47, 0.05);
+  background-color: rgba(var(--gray-10), 0.05);
 }
 
 .workspace-env-item-badge {
@@ -762,7 +844,7 @@ body.is-sidebar-resizing {
 
 .workspace-action-card:hover {
   border-color: var(--color-neutral-4);
-  box-shadow: 0 8px 20px rgba(56, 53, 47, 0.1);
+  box-shadow: var(--shadow-quick-card-hover);
   transform: translateY(-2px);
 }
 
