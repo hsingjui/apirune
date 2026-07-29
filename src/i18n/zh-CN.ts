@@ -349,6 +349,15 @@ export const zhCN = {
   "env.globalVarsHint": "全局变量对项目内所有环境生效，可在请求中通过 {{变量名}} 引用。",
   "env.globalParamsHint":
     "全局参数会自动附加到项目内的每个请求，支持 Header、Cookie、Query 三种类型。",
+  "env.importUrlRules": "导入 URL 规则",
+  "env.importUrlRulesHint":
+    "导入请求时按顺序应用第一条命中的规则改写 URL：前缀规则匹配开头，正则规则匹配整个地址，替换为空即移除该段。例如前缀 http://host:port/api/ 替换为空得到相对路径，配合当前环境的前置 URL 即可调试本地服务。",
+  "env.ruleMatch": "匹配，如 http://host:port/api/",
+  "env.ruleReplace": "替换为（可为空）",
+  "env.ruleRegex": "正则",
+  "env.addRule": "添加规则",
+  "env.deleteRule": "删除规则",
+  "env.invalidRegex": "正则表达式不合法，导入时将被跳过",
   "env.envNamePlaceholder": "环境名称",
   "env.deleteEnv": "删除环境",
   "env.baseUrl": "前置 URL",

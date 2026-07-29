@@ -1,5 +1,28 @@
 import { t } from "../i18n";
 import type { BodyType, FormField, HttpMethod, KeyValueItem } from "../types/request";
+import type { ImportUrlRule } from "../types/environment";
+
+/**
+ * 导入后按用户配置的规则改写 URL：按顺序取第一条命中的规则。
+ * 文本规则匹配前缀；正则规则匹配整个 URL。非法正则直接跳过。
+ */
+export function applyImportUrlRules(url: string, rules: ImportUrlRule[]): string {
+  for (const rule of rules) {
+    const match = rule.match.trim();
+    if (!match) continue;
+    if (rule.regex) {
+      try {
+        const pattern = new RegExp(match);
+        if (pattern.test(url)) return url.replace(pattern, rule.replace);
+      } catch {
+        // 非法正则：视为不命中，不阻断导入
+      }
+    } else if (url.startsWith(match)) {
+      return rule.replace + url.slice(match.length);
+    }
+  }
+  return url;
+}
 
 /** curl 命令解析结果，可直接填充快捷请求编辑器 */
 export interface ParsedCurl {
@@ -13,6 +36,20 @@ export interface ParsedCurl {
 }
 
 const METHODS: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+
+/** 导入时不保留由 HTTP 客户端或运行时管理的连接级请求头 */
+const SKIPPED_IMPORT_HEADERS = new Set([
+  "accept-encoding",
+  "connection",
+  "content-length",
+  "host",
+  "keep-alive",
+  "proxy-connection",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+]);
 
 /** 带值但与请求内容无关的选项，解析时连同其值一起跳过 */
 const IGNORED_VALUE_OPTIONS = new Set([
@@ -42,9 +79,18 @@ const ANSI_ESCAPES: Record<string, string> = {
   '"': '"',
 };
 
-/** 按 shell 规则切分命令行：支持单/双引号、$'...'、反斜杠转义与续行 */
+/**
+ * 将浏览器「Copy as cURL (cmd)」的 CMD 转义还原为实际参数。
+ * 仅在检测到 CMD 特有的 ^ 转义或续行时处理，避免影响 Bash 中的普通 ^ 字符。
+ */
+function normalizeCmdEscapes(input: string): string {
+  if (!/\^(?:\r?\n|["&|<>()%^])/.test(input)) return input;
+  return input.replace(/\^\r?\n[ \t]*/g, " ").replace(/\^([^\r\n])/g, "$1");
+}
+
+/** 按 shell 规则切分命令行：支持 Bash 引号/转义/续行及 Windows CMD 的 ^ 转义 */
 function tokenize(input: string): string[] {
-  const text = input.replace(/\\\r?\n/g, " ");
+  const text = normalizeCmdEscapes(input).replace(/\\\r?\n/g, " ");
   const tokens: string[] = [];
   let current = "";
   let inToken = false;
@@ -135,12 +181,17 @@ function findHeader(headers: KeyValueItem[], name: string): string {
 }
 
 /**
- * 解析导入命令，自动识别格式：
- * - bash curl（浏览器「Copy as cURL」）
- * - PowerShell Invoke-WebRequest（浏览器「Copy as PowerShell」）
+ * 解析导入内容，自动识别格式：
+ * - Bash curl（浏览器「Copy as cURL (bash)」）
+ * - Windows CMD curl（浏览器「Copy as cURL (cmd)」）
+ * - PowerShell Invoke-WebRequest / Invoke-RestMethod（浏览器「Copy as PowerShell」）
+ * - 浏览器复制的原始 HTTP 请求头
  */
 export function parseImportCommand(command: string): ParsedCurl {
   const trimmed = command.trim();
+  if (/^[A-Z]+\s+\S+\s+HTTP\/\d(?:\.\d)?$/i.test(trimmed.split(/\r?\n/, 1)[0] ?? "")) {
+    return parseHttpRequest(trimmed);
+  }
   if (/^curl\s/i.test(trimmed) || trimmed.toLowerCase() === "curl") {
     return parseCurl(trimmed);
   }
@@ -151,9 +202,70 @@ export function parseImportCommand(command: string): ParsedCurl {
 }
 
 /**
+ * 解析浏览器「复制请求标头」得到的 HTTP 请求文本。
+ * 相对请求路径按 Referer 的协议与 Host 还原为完整 URL。
+ */
+export function parseHttpRequest(request: string): ParsedCurl {
+  const [head, bodyRaw = ""] = request.split(/\r?\n\r?\n/, 2);
+  const [requestLine, ...headerLines] = head.split(/\r?\n/);
+  const match = requestLine?.match(/^([A-Z]+)\s+(\S+)\s+HTTP\/\d(?:\.\d)?$/i);
+  if (!match) throw new Error(t("curl.invalidHttpRequest"));
+
+  const method = match[1].toUpperCase();
+  if (!METHODS.includes(method as HttpMethod)) {
+    throw new Error(t("curl.unsupportedMethod", { method }));
+  }
+
+  const allHeaders = headerLines.flatMap((line) => {
+    const header = splitHeader(line);
+    return header ? [header] : [];
+  });
+  const host = findHeader(allHeaders, "host");
+  const target = match[2];
+  let url = target;
+  if (!/^https?:\/\//i.test(url)) {
+    if (!host || !target.startsWith("/")) throw new Error(t("curl.httpRequestNoUrl"));
+    let protocol = "http:";
+    try {
+      const referer = new URL(findHeader(allHeaders, "referer"));
+      if (referer.protocol === "http:" || referer.protocol === "https:") protocol = referer.protocol;
+    } catch {
+      // 没有可用 Referer 时，使用 HTTP 作为浏览器原始请求的默认协议。
+    }
+    url = `${protocol}//${host}${target}`;
+  }
+
+  const headers = allHeaders.filter((header) => !SKIPPED_IMPORT_HEADERS.has(header.key.toLowerCase()));
+  const params: KeyValueItem[] = [];
+  const queryIndex = url.indexOf("?");
+  if (queryIndex >= 0) {
+    params.push(...splitQueryString(url.slice(queryIndex + 1)));
+    url = url.slice(0, queryIndex);
+  }
+
+  let bodyType: BodyType = "none";
+  let body = "";
+  if (bodyRaw) {
+    const contentType = findHeader(headers, "content-type").toLowerCase();
+    if (contentType.includes("json") || /^\s*[[{]/.test(bodyRaw)) {
+      bodyType = "json";
+      body = bodyRaw;
+    } else if (contentType.includes("x-www-form-urlencoded")) {
+      bodyType = "x-www-form-urlencoded";
+      body = JSON.stringify(splitQueryString(bodyRaw));
+    } else {
+      bodyType = "raw";
+      body = bodyRaw;
+    }
+  }
+
+  return { method: method as HttpMethod, url, params, headers, bodyType, body };
+}
+
+/**
  * 解析 curl 命令为请求配置。
  * 支持常见选项：-X/-H/-d(--data 系列)/-F/-u/-b/-A/-e/-G/--url 等，
- * 兼容浏览器「Copy as cURL」输出。解析失败时抛出中文错误信息。
+ * 兼容浏览器「Copy as cURL」的 Bash 与 Windows CMD 输出。解析失败时抛出中文错误信息。
  */
 export function parseCurl(command: string): ParsedCurl {
   const tokens = tokenize(command.trim());

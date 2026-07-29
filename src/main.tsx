@@ -21,7 +21,9 @@ setupContextMenu();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <TooltipProvider delayDuration={300}>
+    {/* delayDuration：停顿足够久才弹出，避免鼠标扫过按钮时误触发；
+        skipDelayDuration：连续在多个提示目标间移动时保持较快响应 */}
+    <TooltipProvider delayDuration={700} skipDelayDuration={300}>
       <App />
       <Toaster position="top-center" />
     </TooltipProvider>

@@ -317,7 +317,7 @@ body.is-sidebar-resizing {
   height: 6px;
 }
 
-/* fixed 定位：跳出标签滚动容器的纵向裁剪，top/left 由 positionMoreMenu 按按钮视口坐标同步写入 */
+/* fixed 定位：跳出标签滚动容器的纵向裁剪，top/left 由 positionHoverMenu（utils/hoverMenu.ts）按触发按钮的视口坐标同步写入 */
 .workspace-more-menu {
   position: fixed;
   top: 0;

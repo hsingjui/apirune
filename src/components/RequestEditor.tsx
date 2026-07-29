@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getMethodColor, METHODS } from "../constants/methods";
 import { useShortcutAction } from "../hooks/useShortcuts";
 import { t, useI18n } from "../i18n";
@@ -207,7 +208,6 @@ function serializeCookies(pairs: QueryParam[]): string {
     .join("; ");
 }
 
-/** 路径参数占位符：单层花括号 {name}，不匹配环境变量的 {{name}} */
 /** 从手动粘贴的 URL 中拆出 query，URL 保留 hash 但不保留 query。 */
 function extractUrlQuery(value: string): { url: string; params: QueryParam[] } | null {
   const queryStart = value.indexOf("?");
@@ -221,6 +221,7 @@ function extractUrlQuery(value: string): { url: string; params: QueryParam[] } |
   return { url: `${value.slice(0, queryStart)}${value.slice(queryEnd)}`, params };
 }
 
+/** 路径参数占位符：单层花括号 {name}，不匹配环境变量的 {{name}} */
 const PATH_PARAM_PATTERN = /(?<!\{)\{([^{}\s/]+)\}(?!\})/g;
 
 /** 从 URL 中提取路径参数名（按出现顺序去重） */
@@ -370,7 +371,6 @@ function RequestEditor({
     });
   }, [url]);
 
-  /** 拖拽响应区顶缘调整高度：最高为编辑器一半，向下拖过阈值则折叠，折叠后仍可拖开 */
   /** 粘贴完整 URL 时将 query 同步到 Params 页签，避免请求地址与参数表重复维护。 */
   const handleUrlPaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
     const parsed = extractUrlQuery(event.clipboardData.getData("text"));
@@ -380,6 +380,7 @@ function RequestEditor({
     setParams(parsed.params);
   };
 
+  /** 拖拽响应区顶缘调整高度：最高为编辑器一半，向下拖过阈值则折叠，折叠后仍可拖开 */
   const startResponseResize = (event: React.PointerEvent) => {
     event.preventDefault();
     const startY = event.clientY;
@@ -873,8 +874,8 @@ function RequestEditor({
             }
             value={url}
             onChange={(event) => setUrl(event.target.value)}
-            style={{ ["--request-method-color" as string]: methodColor }}
             onPaste={handleUrlPaste}
+            style={{ ["--request-method-color" as string]: methodColor }}
           />
         </div>
         <Button disabled={sending} onClick={handleSend}>
@@ -1415,21 +1416,25 @@ function VariableNameInput({
         }}
         onKeyDown={handleKeyDown}
       />
-      <button
-        type="button"
-        tabIndex={-1}
-        className={`response-var-combo-toggle${showList ? " response-var-combo-toggle-open" : ""}`}
-        aria-label={t("editor.varPickExisting")}
-        title={t("editor.varPickExisting")}
-        // mousedown 抢在输入框 blur 之前切换，preventDefault 避免焦点离开输入框
-        onMouseDown={(event) => {
-          event.preventDefault();
-          setActiveIndex(0);
-          setOpen((prev) => !prev);
-        }}
-      >
-        <ChevronDown />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            tabIndex={-1}
+            className={`response-var-combo-toggle${showList ? " response-var-combo-toggle-open" : ""}`}
+            aria-label={t("editor.varPickExisting")}
+            // mousedown 抢在输入框 blur 之前切换，preventDefault 避免焦点离开输入框
+            onMouseDown={(event) => {
+              event.preventDefault();
+              setActiveIndex(0);
+              setOpen((prev) => !prev);
+            }}
+          >
+            <ChevronDown />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{t("editor.varPickExisting")}</TooltipContent>
+      </Tooltip>
       {showList && (
         // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA combobox 模式要求 ul role="listbox"
         <ul className="response-var-options" role="listbox" id={listId}>
@@ -1823,27 +1828,37 @@ function KeyValueTable({
               )}
               {typed && rowType === "file" ? (
                 <div className="request-file-cell">
-                  <button
-                    type="button"
-                    className="request-file-btn"
-                    title={item.value || undefined}
-                    onClick={() => void pickFile(index)}
-                  >
-                    <FolderOpen aria-hidden="true" />
-                    <span className={item.value ? undefined : "request-file-placeholder"}>
-                      {item.value ? fileNameOf(item.value) : t("editor.chooseFile")}
-                    </span>
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="request-file-btn"
+                        onClick={() => void pickFile(index)}
+                      >
+                        <FolderOpen aria-hidden="true" />
+                        <span className={item.value ? undefined : "request-file-placeholder"}>
+                          {item.value ? fileNameOf(item.value) : t("editor.chooseFile")}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    {item.value && (
+                      <TooltipContent className="max-w-80 break-all">{item.value}</TooltipContent>
+                    )}
+                  </Tooltip>
                   {item.value && (
-                    <button
-                      type="button"
-                      className="request-file-clear"
-                      title={t("editor.clearFile")}
-                      aria-label={t("editor.clearFile")}
-                      onClick={() => patchItem(index, { value: "" })}
-                    >
-                      <X />
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="request-file-clear"
+                          aria-label={t("editor.clearFile")}
+                          onClick={() => patchItem(index, { value: "" })}
+                        >
+                          <X />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("editor.clearFile")}</TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               ) : typed && rowType === "array" ? (
@@ -1862,19 +1877,23 @@ function KeyValueTable({
                           })
                         }
                       />
-                      <button
-                        type="button"
-                        className="request-array-remove"
-                        title={t("editor.deleteValue")}
-                        aria-label={t("editor.deleteValue")}
-                        onClick={() =>
-                          patchItem(index, {
-                            values: allValues.filter((_, i) => i !== valueIndex),
-                          })
-                        }
-                      >
-                        <X />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="request-array-remove"
+                            aria-label={t("editor.deleteValue")}
+                            onClick={() =>
+                              patchItem(index, {
+                                values: allValues.filter((_, i) => i !== valueIndex),
+                              })
+                            }
+                          >
+                            <X />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("editor.deleteValue")}</TooltipContent>
+                      </Tooltip>
                     </div>
                   ))}
                   <button
@@ -1906,15 +1925,19 @@ function KeyValueTable({
               {isPlaceholder ? (
                 <span aria-hidden="true" />
               ) : (
-                <button
-                  type="button"
-                  className="request-params-remove"
-                  title={t("common.delete")}
-                  aria-label={t("common.delete")}
-                  onClick={() => removeRows(new Set([index]))}
-                >
-                  <Trash2 />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="request-params-remove"
+                      aria-label={t("common.delete")}
+                      onClick={() => removeRows(new Set([index]))}
+                    >
+                      <Trash2 />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("common.delete")}</TooltipContent>
+                </Tooltip>
               )}
             </div>
           );
@@ -2116,15 +2139,19 @@ function SseTimeline({
             onChange={(event) => setQuery(event.target.value)}
           />
           {query && (
-            <button
-              type="button"
-              className="response-sse-search-clear"
-              title={t("common.clear")}
-              aria-label={t("common.clear")}
-              onClick={() => setQuery("")}
-            >
-              <X aria-hidden="true" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="response-sse-search-clear"
+                  aria-label={t("common.clear")}
+                  onClick={() => setQuery("")}
+                >
+                  <X aria-hidden="true" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("common.clear")}</TooltipContent>
+            </Tooltip>
           )}
         </div>
         <div ref={listRef} className="response-sse-list">
@@ -2161,15 +2188,19 @@ function SseTimeline({
       <div className="response-sse-resizer" aria-hidden="true" onPointerDown={startPaneResize} />
       <div className="response-sse-detail">
         {active && detailJson === null && (
-          <button
-            type="button"
-            className="json-copy"
-            title={t("common.copy")}
-            aria-label={t("common.copy")}
-            onClick={() => void handleCopyDetail()}
-          >
-            <Copy aria-hidden="true" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="json-copy"
+                aria-label={t("common.copy")}
+                onClick={() => void handleCopyDetail()}
+              >
+                <Copy aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("common.copy")}</TooltipContent>
+          </Tooltip>
         )}
         {active &&
           (detailJson !== null ? (

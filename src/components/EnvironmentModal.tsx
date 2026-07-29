@@ -1,4 +1,4 @@
-import { Plus, SlidersHorizontal, Trash2, Variable, X } from "lucide-react";
+import { Import, Plus, SlidersHorizontal, Trash2, Variable, X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { t, useI18n } from "../i18n";
 import {
   getProjectGlobals,
@@ -23,6 +24,7 @@ import type {
   EnvVariable,
   GlobalParam,
   GlobalParamIn,
+  ImportUrlRule,
   ProjectGlobals,
 } from "../types/environment";
 import type { AuthConfig, AuthType } from "../types/http";
@@ -42,12 +44,17 @@ type SelectionKey = string;
 
 const GLOBAL_VARS = "global-vars";
 const GLOBAL_PARAMS = "global-params";
+const IMPORT_RULES = "import-rules";
 
 /** 环境管理弹窗：全局变量、全局参数与项目环境的集中管理，统一保存 */
 function EnvironmentModal({ visible, projectId, onClose, onSaved }: EnvironmentModalProps) {
   const { t } = useI18n();
   const [environments, setEnvironments] = useState<Environment[]>([]);
-  const [globals, setGlobals] = useState<ProjectGlobals>({ variables: [], params: [] });
+  const [globals, setGlobals] = useState<ProjectGlobals>({
+    variables: [],
+    params: [],
+    importUrlRules: [],
+  });
   const [selected, setSelected] = useState<SelectionKey>(GLOBAL_VARS);
   const [saving, setSaving] = useState(false);
 
@@ -133,15 +140,19 @@ function EnvironmentModal({ visible, projectId, onClose, onSaved }: EnvironmentM
         <DialogTitle className="sr-only">{t("env.title")}</DialogTitle>
         <header className="env-header">
           <h2 className="env-header-title">{t("env.title")}</h2>
-          <button
-            type="button"
-            className="env-close"
-            title={t("common.close")}
-            aria-label={t("common.close")}
-            onClick={onClose}
-          >
-            <X />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="env-close"
+                aria-label={t("common.close")}
+                onClick={onClose}
+              >
+                <X />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>{t("common.close")}</TooltipContent>
+          </Tooltip>
         </header>
 
         <div className="env-layout">
@@ -163,6 +174,14 @@ function EnvironmentModal({ visible, projectId, onClose, onSaved }: EnvironmentM
             >
               <SlidersHorizontal />
               <span>{t("env.globalParams")}</span>
+            </button>
+            <button
+              type="button"
+              className={`env-nav-item${selected === IMPORT_RULES ? " env-nav-item-active" : ""}`}
+              onClick={() => setSelected(IMPORT_RULES)}
+            >
+              <Import />
+              <span>{t("env.importUrlRules")}</span>
             </button>
 
             <span className="env-nav-group">{t("env.envGroup")}</span>
@@ -210,6 +229,19 @@ function EnvironmentModal({ visible, projectId, onClose, onSaved }: EnvironmentM
                 </>
               )}
 
+              {selected === IMPORT_RULES && (
+                <>
+                  <h3 className="env-section-title">{t("env.importUrlRules")}</h3>
+                  <p className="env-section-hint">{t("env.importUrlRulesHint")}</p>
+                  <ImportUrlRuleTable
+                    items={globals.importUrlRules}
+                    onChange={(importUrlRules) =>
+                      setGlobals((prev) => ({ ...prev, importUrlRules }))
+                    }
+                  />
+                </>
+              )}
+
               {selectedEnv && (
                 <>
                   <div className="env-detail-header">
@@ -223,15 +255,19 @@ function EnvironmentModal({ visible, projectId, onClose, onSaved }: EnvironmentM
                       maxLength={20}
                       onChange={(event) => updateEnv(selectedEnv.id, { name: event.target.value })}
                     />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label={t("env.deleteEnv")}
-                      title={t("env.deleteEnv")}
-                      onClick={() => removeEnvironment(selectedEnv.id)}
-                    >
-                      <Trash2 />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          aria-label={t("env.deleteEnv")}
+                          onClick={() => removeEnvironment(selectedEnv.id)}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("env.deleteEnv")}</TooltipContent>
+                    </Tooltip>
                   </div>
 
                   <h3 className="env-section-title">{t("env.baseUrl")}</h3>
@@ -257,9 +293,12 @@ function EnvironmentModal({ visible, projectId, onClose, onSaved }: EnvironmentM
                 </>
               )}
 
-              {!selectedEnv && selected !== GLOBAL_VARS && selected !== GLOBAL_PARAMS && (
-                <p className="env-section-hint">{t("env.selectHint")}</p>
-              )}
+              {!selectedEnv &&
+                selected !== GLOBAL_VARS &&
+                selected !== GLOBAL_PARAMS &&
+                selected !== IMPORT_RULES && (
+                  <p className="env-section-hint">{t("env.selectHint")}</p>
+                )}
             </div>
 
             <footer className="env-footer">
@@ -318,15 +357,19 @@ function VariableTable({
             {isPlaceholder ? (
               <span aria-hidden="true" />
             ) : (
-              <button
-                type="button"
-                className="env-table-remove"
-                title={t("common.delete")}
-                aria-label={t("env.deleteVar")}
-                onClick={() => onChange(items.filter((_, i) => i !== index))}
-              >
-                <Trash2 />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="env-table-remove"
+                    aria-label={t("env.deleteVar")}
+                    onClick={() => onChange(items.filter((_, i) => i !== index))}
+                  >
+                    <Trash2 />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("common.delete")}</TooltipContent>
+              </Tooltip>
             )}
           </div>
         );
@@ -410,21 +453,123 @@ function GlobalParamTable({
               {isPlaceholder ? (
                 <span aria-hidden="true" />
               ) : (
-                <button
-                  type="button"
-                  className="env-table-remove"
-                  title={t("common.delete")}
-                  aria-label={t("env.deleteParam")}
-                  onClick={() => replaceCurrent(current.filter((_, i) => i !== index))}
-                >
-                  <Trash2 />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="env-table-remove"
+                      aria-label={t("env.deleteParam")}
+                      onClick={() => replaceCurrent(current.filter((_, i) => i !== index))}
+                    >
+                      <Trash2 />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("common.delete")}</TooltipContent>
+                </Tooltip>
               )}
             </div>
           );
         })}
       </div>
     </>
+  );
+}
+
+/** 校验正则表达式是否合法 */
+function isValidRegex(pattern: string): boolean {
+  try {
+    new RegExp(pattern);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 导入 URL 规则表格：匹配 / 替换为 / 正则开关，末尾带自动追加的占位行 */
+function ImportUrlRuleTable({
+  items,
+  onChange,
+}: {
+  items: ImportUrlRule[];
+  onChange: (items: ImportUrlRule[]) => void;
+}) {
+  const updateItem = (index: number, patch: Partial<ImportUrlRule>) => {
+    if (index === items.length) {
+      onChange([...items, { match: "", replace: "", regex: false, ...patch }]);
+      return;
+    }
+    onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  };
+
+  return (
+    <div className="env-table">
+      <div className="env-table-head env-rule-grid">
+        <span>{t("env.ruleMatch")}</span>
+        <span>{t("env.ruleReplace")}</span>
+        <span>{t("env.ruleRegex")}</span>
+        <span aria-hidden="true" />
+      </div>
+      {[...items, { match: "", replace: "", regex: false }].map((rule, index) => {
+        const isPlaceholder = index === items.length;
+        const invalid = !isPlaceholder && rule.regex && rule.match && !isValidRegex(rule.match);
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 受控键值行 + 末尾占位行，数据项无稳定 id，以索引定位
+          <div key={index} className="env-table-row env-rule-grid">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <input
+                  className={invalid ? "env-rule-invalid" : undefined}
+                  placeholder={isPlaceholder ? t("env.addRule") : t("env.ruleMatch")}
+                  value={rule.match}
+                  spellCheck={false}
+                  onChange={(event) => updateItem(index, { match: event.target.value })}
+                />
+              </TooltipTrigger>
+              {invalid && <TooltipContent>{t("env.invalidRegex")}</TooltipContent>}
+            </Tooltip>
+            <input
+              placeholder={t("env.ruleReplace")}
+              value={rule.replace}
+              spellCheck={false}
+              onChange={(event) => updateItem(index, { replace: event.target.value })}
+            />
+            {isPlaceholder ? (
+              <span aria-hidden="true" />
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <input
+                    type="checkbox"
+                    className="env-rule-checkbox"
+                    aria-label={t("env.ruleRegex")}
+                    checked={rule.regex}
+                    onChange={(event) => updateItem(index, { regex: event.target.checked })}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>{t("env.ruleRegex")}</TooltipContent>
+              </Tooltip>
+            )}
+            {isPlaceholder ? (
+              <span aria-hidden="true" />
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="env-table-remove"
+                    aria-label={t("env.deleteRule")}
+                    onClick={() => onChange(items.filter((_, i) => i !== index))}
+                  >
+                    <Trash2 />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("common.delete")}</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

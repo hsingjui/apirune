@@ -393,15 +393,19 @@ function HistoryPanel({ projectId, onRestore }: HistoryPanelProps) {
                       <span>{formatDayLabel(group.timestamp, t)}</span>
                       <span className="history-group-count">{group.items.length}</span>
                     </button>
-                    <button
-                      type="button"
-                      className="history-group-remove"
-                      title={t("history.deleteDay")}
-                      aria-label={t("history.deleteDay")}
-                      onClick={() => handleDeleteDay(group.timestamp, group.key)}
-                    >
-                      <Trash2 />
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="history-group-remove"
+                          aria-label={t("history.deleteDay")}
+                          onClick={() => handleDeleteDay(group.timestamp, group.key)}
+                        >
+                          <Trash2 />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("history.deleteDay")}</TooltipContent>
+                    </Tooltip>
                   </div>
                   {!collapsed &&
                     group.items.map((entry) => (
@@ -425,9 +429,14 @@ function HistoryPanel({ projectId, onRestore }: HistoryPanelProps) {
                           >
                             {entry.method}
                           </span>
-                          <span className="history-item-url" title={entry.url}>
-                            {entry.url}
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="history-item-url">{entry.url}</span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-80 break-all">
+                              {entry.url}
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                         <div className="history-item-meta">
                           {entry.error !== null ? (
@@ -441,18 +450,22 @@ function HistoryPanel({ projectId, onRestore }: HistoryPanelProps) {
                           )}
                           {entry.durationMs !== null && <span>{entry.durationMs} ms</span>}
                           <span className="history-item-time">{formatTime(entry.createdAt)}</span>
-                          <button
-                            type="button"
-                            className="history-item-remove"
-                            title={t("common.delete")}
-                            aria-label={t("history.deleteEntry")}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void handleDelete(entry.id);
-                            }}
-                          >
-                            <Trash2 />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="history-item-remove"
+                                aria-label={t("history.deleteEntry")}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void handleDelete(entry.id);
+                                }}
+                              >
+                                <Trash2 />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t("common.delete")}</TooltipContent>
+                          </Tooltip>
                         </div>
                       </div>
                     ))}
@@ -490,9 +503,12 @@ function HistoryPanel({ projectId, onRestore }: HistoryPanelProps) {
                 <span className="history-method" style={{ color: getMethodColor(detail.method) }}>
                   {detail.method}
                 </span>
-                <span className="history-detail-url" title={detail.url}>
-                  {detail.url}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="history-detail-url">{detail.url}</span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-80 break-all">{detail.url}</TooltipContent>
+                </Tooltip>
                 {onRestore && (
                   <Button variant="outline" onClick={() => onRestore(detail)}>
                     <Zap />

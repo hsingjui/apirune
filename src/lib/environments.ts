@@ -1,6 +1,12 @@
 import Database from "@tauri-apps/plugin-sql";
 import { t } from "../i18n";
-import type { Environment, EnvVariable, GlobalParam, ProjectGlobals } from "../types/environment";
+import type {
+  Environment,
+  EnvVariable,
+  GlobalParam,
+  ImportUrlRule,
+  ProjectGlobals,
+} from "../types/environment";
 import type { AuthConfig } from "../types/http";
 import { createId } from "../utils/id";
 
@@ -114,29 +120,36 @@ export async function createDefaultEnvironments(projectId: string): Promise<void
   }
 }
 
-/** 读取项目全局变量 / 全局参数，无记录时返回空配置 */
+/** 读取项目全局变量 / 全局参数 / 导入 URL 规则，无记录时返回空配置 */
 export async function getProjectGlobals(projectId: string): Promise<ProjectGlobals> {
   const db = await getDb();
-  const rows = await db.select<{ variables: string; params: string }[]>(
-    "SELECT variables, params FROM project_globals WHERE project_id = $1",
+  const rows = await db.select<{ variables: string; params: string; import_url_rules: string }[]>(
+    "SELECT variables, params, import_url_rules FROM project_globals WHERE project_id = $1",
     [projectId],
   );
-  if (rows.length === 0) return { variables: [], params: [] };
+  if (rows.length === 0) return { variables: [], params: [], importUrlRules: [] };
   return {
     variables: parseJson<EnvVariable[]>(rows[0].variables, []),
     params: parseJson<GlobalParam[]>(rows[0].params, []),
+    importUrlRules: parseJson<ImportUrlRule[]>(rows[0].import_url_rules, []),
   };
 }
 
-/** 保存项目全局变量 / 全局参数（upsert） */
+/** 保存项目全局变量 / 全局参数 / 导入 URL 规则（upsert） */
 export async function saveProjectGlobals(
   projectId: string,
   globals: ProjectGlobals,
 ): Promise<void> {
   const db = await getDb();
   await db.execute(
-    "INSERT INTO project_globals (project_id, variables, params, updated_at) VALUES ($1, $2, $3, $4) ON CONFLICT (project_id) DO UPDATE SET variables = $2, params = $3, updated_at = $4",
-    [projectId, JSON.stringify(globals.variables), JSON.stringify(globals.params), Date.now()],
+    "INSERT INTO project_globals (project_id, variables, params, import_url_rules, updated_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (project_id) DO UPDATE SET variables = $2, params = $3, import_url_rules = $4, updated_at = $5",
+    [
+      projectId,
+      JSON.stringify(globals.variables),
+      JSON.stringify(globals.params),
+      JSON.stringify(globals.importUrlRules),
+      Date.now(),
+    ],
   );
 }
 

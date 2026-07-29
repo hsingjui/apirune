@@ -2,6 +2,7 @@ import { Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { t, useI18n } from "../i18n";
 import {
   type CodegenInput,
@@ -121,15 +122,19 @@ function CodegenModal({ visible, input, onClose }: CodegenModalProps) {
                 </div>
               </div>
               <div className="codegen-code-wrap">
-                <button
-                  type="button"
-                  className="codegen-copy"
-                  title={t("common.copy")}
-                  aria-label={t("common.copy")}
-                  onClick={() => void handleCopy()}
-                >
-                  <Copy aria-hidden="true" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="codegen-copy"
+                      aria-label={t("common.copy")}
+                      onClick={() => void handleCopy()}
+                    >
+                      <Copy aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("common.copy")}</TooltipContent>
+                </Tooltip>
                 <pre className="codegen-code">
                   <code>
                     {lines.map((tokens, index) => (

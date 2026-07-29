@@ -73,3 +73,6 @@ scripts/
 .direnv
 .vercel
 .netlify
+
+# CodeStable local workspace
+codestable/

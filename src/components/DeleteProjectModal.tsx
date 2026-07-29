@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useI18n } from "../i18n";
 import type { Project } from "../types/project";
 import "./DeleteProjectModal.css";
@@ -59,14 +60,14 @@ function DeleteProjectModal({ visible, project, onCancel, onConfirm }: DeletePro
         <div className="delete-project-form">
           <p className="delete-project-hint">
             {t("deleteProject.hintPrefix")}
-            <button
-              type="button"
-              className="delete-project-name"
-              title={t("deleteProject.copyTitle")}
-              onClick={copyName}
-            >
-              {project?.name}
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button type="button" className="delete-project-name" onClick={copyName}>
+                  {project?.name}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("deleteProject.copyTitle")}</TooltipContent>
+            </Tooltip>
             {t("deleteProject.hintSuffix")}
           </p>
           <Input

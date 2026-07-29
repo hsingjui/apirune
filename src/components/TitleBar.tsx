@@ -2,6 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { House, Minus, RefreshCw, Settings, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useShortcutAction } from "../hooks/useShortcuts";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useI18n } from "../i18n";
 import type { Project } from "../types/project";
 import ProjectIcon from "./ProjectIcon";
@@ -97,27 +98,39 @@ function TitleBar({
       <div className="titlebar-left">
         {isMac && (
           <div className="traffic-lights">
-            <button
-              type="button"
-              className="traffic-light traffic-light-close"
-              title={t("common.close")}
-              aria-label={t("common.close")}
-              onClick={closeWindow}
-            />
-            <button
-              type="button"
-              className="traffic-light traffic-light-minimize"
-              title={t("titlebar.minimize")}
-              aria-label={t("titlebar.minimize")}
-              onClick={minimizeWindow}
-            />
-            <button
-              type="button"
-              className="traffic-light traffic-light-maximize"
-              title={t("titlebar.maximize")}
-              aria-label={t("titlebar.maximize")}
-              onClick={toggleMaximizeWindow}
-            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="traffic-light traffic-light-close"
+                  aria-label={t("common.close")}
+                  onClick={closeWindow}
+                />
+              </TooltipTrigger>
+              <TooltipContent>{t("common.close")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="traffic-light traffic-light-minimize"
+                  aria-label={t("titlebar.minimize")}
+                  onClick={minimizeWindow}
+                />
+              </TooltipTrigger>
+              <TooltipContent>{t("titlebar.minimize")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="traffic-light traffic-light-maximize"
+                  aria-label={t("titlebar.maximize")}
+                  onClick={toggleMaximizeWindow}
+                />
+              </TooltipTrigger>
+              <TooltipContent>{t("titlebar.maximize")}</TooltipContent>
+            </Tooltip>
           </div>
         )}
 
@@ -183,88 +196,114 @@ function TitleBar({
             >
               <ProjectIcon icon={tab.icon} size={14} />
               <span className="titlebar-tab-name">{tab.name}</span>
-              <button
-                type="button"
-                className="titlebar-tab-close"
-                title={t("titlebar.closeProject")}
-                aria-label={t("titlebar.closeNamed", { name: tab.name })}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onCloseTab(tab.id);
-                }}
-              >
-                <X />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="titlebar-tab-close"
+                    aria-label={t("titlebar.closeNamed", { name: tab.name })}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onCloseTab(tab.id);
+                    }}
+                  >
+                    <X />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("titlebar.closeProject")}</TooltipContent>
+              </Tooltip>
             </div>
           ))}
         </div>
       </div>
 
       <div className="titlebar-actions">
-        <button
-          type="button"
-          className={`titlebar-btn${refreshing ? " titlebar-btn-refreshing" : ""}`}
-          title={t("common.refresh")}
-          aria-label={t("common.refresh")}
-          onClick={handleRefresh}
-        >
-          <RefreshCw />
-        </button>
-        <button
-          type="button"
-          className="titlebar-btn"
-          title={t("common.settings")}
-          aria-label={t("common.settings")}
-          onClick={() => setSettingsVisible(true)}
-        >
-          <Settings />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`titlebar-btn${refreshing ? " titlebar-btn-refreshing" : ""}`}
+              aria-label={t("common.refresh")}
+              onClick={handleRefresh}
+            >
+              <RefreshCw />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("common.refresh")}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="titlebar-btn"
+              aria-label={t("common.settings")}
+              onClick={() => setSettingsVisible(true)}
+            >
+              <Settings />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("common.settings")}</TooltipContent>
+        </Tooltip>
 
         {!isMac && (
           <div className="window-controls">
-            <button
-              type="button"
-              className="window-control-btn"
-              title={t("titlebar.minimize")}
-              aria-label={t("titlebar.minimize")}
-              onClick={minimizeWindow}
-            >
-              <Minus />
-            </button>
-            <button
-              type="button"
-              className="window-control-btn"
-              title={maximized ? t("titlebar.restore") : t("titlebar.maximize")}
-              aria-label={maximized ? t("titlebar.restore") : t("titlebar.maximize")}
-              onClick={toggleMaximizeWindow}
-            >
-              {maximized ? (
-                /* lucide 无还原图标（Copy 方向相反），按 lucide 24 网格自绘以保持笔画一致 */
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="window-control-btn"
+                  aria-label={t("titlebar.minimize")}
+                  onClick={minimizeWindow}
                 >
-                  <rect x="2" y="10" width="12" height="12" rx="2" />
-                  <path d="M10 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6" />
-                </svg>
-              ) : (
-                <Square />
-              )}
-            </button>
-            <button
-              type="button"
-              className="window-control-btn window-control-btn-close"
-              title={t("common.close")}
-              aria-label={t("common.close")}
-              onClick={closeWindow}
-            >
-              <X />
-            </button>
+                  <Minus />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("titlebar.minimize")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="window-control-btn"
+                  aria-label={maximized ? t("titlebar.restore") : t("titlebar.maximize")}
+                  onClick={toggleMaximizeWindow}
+                >
+                  {maximized ? (
+                    /* lucide 无还原图标（Copy 方向相反），按 lucide 24 网格自绘以保持笔画一致 */
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="2" y="10" width="12" height="12" rx="2" />
+                      <path d="M10 10V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6" />
+                    </svg>
+                  ) : (
+                    <Square />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {maximized ? t("titlebar.restore") : t("titlebar.maximize")}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="window-control-btn window-control-btn-close"
+                  aria-label={t("common.close")}
+                  onClick={closeWindow}
+                >
+                  <X />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("common.close")}</TooltipContent>
+            </Tooltip>
           </div>
         )}
       </div>

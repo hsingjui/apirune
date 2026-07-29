@@ -14,7 +14,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { type SyntheticEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,7 +39,7 @@ import type { HistoryEntry } from "../types/history";
 import type { Project } from "../types/project";
 import type { QuickRequest } from "../types/quick";
 import type { ParsedCurl } from "../utils/curl";
-import { closeHoverMenu } from "../utils/hoverMenu";
+import { closeHoverMenu, positionHoverMenu } from "../utils/hoverMenu";
 import { createId } from "../utils/id";
 import ApiTree, { type ApiTreeHandle } from "./ApiTree";
 import CurlImportModal from "./CurlImportModal";
@@ -230,15 +230,6 @@ function ProjectWorkspace({
   // 标签过多溢出时，激活标签变化 / 新开标签后自动滚动到可见区域；已在可视区内则不动
   const tabsScrollRef = useRef<HTMLDivElement | null>(null);
 
-  // 「更多」菜单为 fixed 定位（脱离标签滚动容器裁剪）：鼠标进入 / 聚焦触发按钮时，
-  // 同步测量按钮视口坐标并写入菜单样式，保证悬停展开前位置已就绪
-  const positionMoreMenu = (event: SyntheticEvent<HTMLDivElement>) => {
-    const menu = event.currentTarget.querySelector<HTMLElement>(".workspace-more-menu");
-    if (!menu) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    menu.style.top = `${rect.bottom + 6}px`;
-    menu.style.left = `${rect.left}px`;
-  };
   // biome-ignore lint/correctness/useExhaustiveDependencies: 标签增删（requestTabs 变化）时也要重新检查激活标签的可见性，函数体内不直接引用属刻意为之
   useEffect(() => {
     const container = tabsScrollRef.current;
@@ -618,7 +609,11 @@ function ProjectWorkspace({
                 value={keyword}
                 onChange={(event) => setKeyword(event.target.value)}
               />
-              <div className="workspace-more">
+              <div
+                className="workspace-more"
+                onMouseEnter={positionHoverMenu}
+                onFocus={positionHoverMenu}
+              >
                 <Button size="icon" aria-label={t("workspace.new")} aria-haspopup="menu">
                   <Plus />
                 </Button>
@@ -761,24 +756,29 @@ function ProjectWorkspace({
                           )}
                           <RequestTabLabel name={tabName} />
                           {dirtyTabs[tab.id] && (
-                            <span
-                              className="workspace-request-tab-dirty"
-                              title={t("workspace.unsavedChanges")}
-                              aria-hidden="true"
-                            />
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="workspace-request-tab-dirty" aria-hidden="true" />
+                              </TooltipTrigger>
+                              <TooltipContent>{t("workspace.unsavedChanges")}</TooltipContent>
+                            </Tooltip>
                           )}
-                          <button
-                            type="button"
-                            className="workspace-request-tab-close"
-                            title={t("common.close")}
-                            aria-label={t("workspace.closeQuickRequest")}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              closeRequestTab(tab.id);
-                            }}
-                          >
-                            <X />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="workspace-request-tab-close"
+                                aria-label={t("workspace.closeQuickRequest")}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  closeRequestTab(tab.id);
+                                }}
+                              >
+                                <X />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t("common.close")}</TooltipContent>
+                          </Tooltip>
                         </div>
                       );
                     })}
@@ -799,8 +799,8 @@ function ProjectWorkspace({
                       </Tooltip>
                       <div
                         className="workspace-more"
-                        onMouseEnter={positionMoreMenu}
-                        onFocus={positionMoreMenu}
+                        onMouseEnter={positionHoverMenu}
+                        onFocus={positionHoverMenu}
                       >
                         <button
                           type="button"
@@ -1029,6 +1029,7 @@ function ProjectWorkspace({
 
       <CurlImportModal
         visible={curlModalVisible}
+        projectId={project.id}
         onCancel={() => setCurlModalVisible(false)}
         onImport={handleCurlImport}
       />

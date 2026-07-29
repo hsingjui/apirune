@@ -8,18 +8,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useI18n } from "../i18n";
-import { type ParsedCurl, parseImportCommand } from "../utils/curl";
+import { getProjectGlobals } from "../lib/environments";
+import { applyImportUrlRules, type ParsedCurl, parseImportCommand } from "../utils/curl";
 import "./CurlImportModal.css";
 
 interface CurlImportModalProps {
   visible: boolean;
+  /** 当前项目 id，用于读取项目级导入 URL 规则；缺省时由父组件自行应用规则（如首页草稿流） */
+  projectId?: string;
   onCancel: () => void;
   /** 解析成功后回调，由父组件创建快捷请求标签页 */
   onImport: (parsed: ParsedCurl) => void;
 }
 
-/** curl 导入弹窗：粘贴 curl / PowerShell 命令，解析为快捷请求（不入库） */
-function CurlImportModal({ visible, onCancel, onImport }: CurlImportModalProps) {
+/** 导入弹窗：粘贴 cURL、PowerShell 或浏览器复制的原始 HTTP 请求 */
+function CurlImportModal({ visible, projectId, onCancel, onImport }: CurlImportModalProps) {
   const { t } = useI18n();
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,9 +35,15 @@ function CurlImportModal({ visible, onCancel, onImport }: CurlImportModalProps) 
     }
   }, [visible]);
 
-  const handleImport = () => {
+  const handleImport = async () => {
     try {
-      onImport(parseImportCommand(text));
+      const parsed = parseImportCommand(text);
+      // 按项目级导入 URL 规则改写地址，便于与环境 baseUrl 组合
+      if (projectId) {
+        const globals = await getProjectGlobals(projectId);
+        parsed.url = applyImportUrlRules(parsed.url, globals.importUrlRules);
+      }
+      onImport(parsed);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }

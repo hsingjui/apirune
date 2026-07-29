@@ -1027,7 +1027,8 @@
 }
 
 /* 右上角浮动复制按钮：JSON 编辑器 / 查看器 / SSE 纯文本详情共用 */
-.json-copy {
+.json-copy,
+.json-wrap {
   position: absolute;
   top: 8px;
   right: 12px;
@@ -1045,7 +1046,8 @@
   cursor: pointer;
 }
 
-.json-copy:hover {
+.json-copy:hover,
+.json-wrap:hover {
   color: var(--c-ink-primary);
   background-color: rgba(var(--gray-10), 0.05);
 }
@@ -1055,9 +1057,21 @@
   cursor: default;
 }
 
-.json-copy svg {
+.json-copy svg,
+.json-wrap svg {
   width: 14px;
   height: 14px;
+}
+
+/* 换行开关：位于复制按钮左侧，与复制按钮同尺寸 */
+.json-wrap {
+  right: 46px;
+}
+
+.json-wrap.is-on {
+  color: var(--c-accent);
+  background-color: var(--c-accent-faint);
+  border-color: var(--c-accent);
 }
 
 /* === VS Code 风格查找替换面板：悬浮在编辑器右上角 === */

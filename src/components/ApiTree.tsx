@@ -10,6 +10,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "r
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getMethodColor } from "../constants/methods";
 import { useI18n } from "../i18n";
 import {
@@ -22,7 +23,7 @@ import {
   updateQuickRequest,
 } from "../lib/quickRequests";
 import type { QuickFolder, QuickRequest } from "../types/quick";
-import { closeHoverMenu } from "../utils/hoverMenu";
+import { closeHoverMenu, positionHoverMenu } from "../utils/hoverMenu";
 
 /** 拖拽快捷请求时的 dataTransfer 类型标识 */
 const DRAG_REQUEST_TYPE = "text/apirune-quick-request";
@@ -307,7 +308,6 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
         tabIndex={0}
         className="workspace-tree-row"
         style={{ paddingLeft: 8 + depth * 16 }}
-        title={request.name}
         draggable
         onDragStart={(event) => {
           event.dataTransfer.setData(DRAG_REQUEST_TYPE, request.id);
@@ -330,10 +330,18 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
         <span className="workspace-tree-method" style={{ color: getMethodColor(request.method) }}>
           {request.method}
         </span>
-        <span className="workspace-tree-name">{request.name}</span>
+        {/* 提示只挂在名称上：行尾 "⋯" 按钮悬停会展开菜单，不应同时弹气泡 */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="workspace-tree-name">{request.name}</span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-80 break-all">{request.name}</TooltipContent>
+        </Tooltip>
         <div
           className="workspace-more workspace-tree-add"
           onClick={(event) => event.stopPropagation()}
+          onMouseEnter={positionHoverMenu}
+          onFocus={positionHoverMenu}
         >
           <button
             type="button"
@@ -407,7 +415,12 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
     folderLabel: string,
     onDelete?: () => void,
   ) => (
-    <div className="workspace-more workspace-tree-add" onClick={(event) => event.stopPropagation()}>
+    <div
+      className="workspace-more workspace-tree-add"
+      onClick={(event) => event.stopPropagation()}
+      onMouseEnter={positionHoverMenu}
+      onFocus={positionHoverMenu}
+    >
       <button
         type="button"
         className="workspace-tree-add-btn"
@@ -460,7 +473,6 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
           tabIndex={0}
           className={`workspace-tree-row workspace-tree-folder${dropTarget === folder.id ? " workspace-tree-drop" : ""}`}
           style={{ paddingLeft: 8 + depth * 16 }}
-          title={folder.name}
           onClick={() => toggleFolder(folder.id)}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
@@ -475,7 +487,13 @@ const ApiTree = forwardRef<ApiTreeHandle, ApiTreeProps>(function ApiTree(
           ) : (
             <FolderIcon className="workspace-tree-folder-icon" />
           )}
-          <span className="workspace-tree-name">{folder.name}</span>
+          {/* 提示只挂在名称上：行尾 "+" 按钮悬停会展开菜单，不应同时弹气泡 */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="workspace-tree-name">{folder.name}</span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-80 break-all">{folder.name}</TooltipContent>
+          </Tooltip>
           {renderAddMenu(
             folder.id,
             t("apiTree.addInFolder", { name: folder.name }),

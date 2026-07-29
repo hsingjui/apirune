@@ -174,6 +174,13 @@ pub fn run() {
                         // 项目手动排序位次；旧数据按原展示顺序（创建时间倒序）回填
                         sql: "ALTER TABLE projects ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;\n                        UPDATE projects SET sort_order = (\n                          SELECT COUNT(*) FROM projects p2\n                          WHERE p2.created_at > projects.created_at\n                             OR (p2.created_at = projects.created_at AND p2.id > projects.id)\n                        );",
                         kind: MigrationKind::Up,
+                    },
+                    Migration {
+                        version: 5,
+                        description: "project_globals_import_url_rules",
+                        // 项目级导入 URL 规则（ImportUrlRule[] 的 JSON 串）
+                        sql: "ALTER TABLE project_globals ADD COLUMN import_url_rules TEXT NOT NULL DEFAULT '[]';",
+                        kind: MigrationKind::Up,
                     }],
                 )
                 .build(),

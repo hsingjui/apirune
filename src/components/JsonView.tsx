@@ -26,8 +26,10 @@ import CodeMirror, {
   type ViewUpdate,
 } from "@uiw/react-codemirror";
 import { CircleAlert, Copy } from "lucide-react";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { usePersistentState } from "../hooks/usePersistentState";
 import { t } from "../i18n";
 import { findJsonComments, parseJsonWithComments } from "../utils/jsonc";
 
@@ -246,10 +248,64 @@ function copyWholeDoc(view: EditorView): boolean {
   return true;
 }
 
-/** 共用扩展：JSON 语言 + 自动换行 + 暖纸配色 + 查找替换（⌘F / ⌘R） + 快捷复制（⌘⇧C） */
+/** 自动换行开关：编辑器与查看器实例间同步，并持久化到 localStorage */
+const wrapListeners = new Set<(wrap: boolean) => void>();
+
+function useJsonWrap(): [boolean, () => void] {
+  const [wrap, setWrap] = usePersistentState("apirune:json-wrap", true);
+  useEffect(() => {
+    wrapListeners.add(setWrap);
+    return () => {
+      wrapListeners.delete(setWrap);
+    };
+  }, [setWrap]);
+  const toggleWrap = useCallback(() => {
+    setWrap((prev) => {
+      const next = !prev;
+      for (const listener of wrapListeners) listener(next);
+      return next;
+    });
+  }, [setWrap]);
+  return [wrap, toggleWrap];
+}
+
+/** 自动换行切换按钮：开启时高亮，切换长行是软换行还是横向滚动 */
+function JsonWrapButton({ wrap, onToggle }: { wrap: boolean; onToggle: () => void }) {
+  const label = wrap ? t("json.toggleWrapOff") : t("json.toggleWrapOn");
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className={`json-wrap${wrap ? " is-on" : ""}`}
+          aria-label={label}
+          aria-pressed={wrap}
+          onClick={onToggle}
+        >
+          {/* 轻量回绕图标：两行文本 + 末行回收箭头，自绘以控制视觉大小与线宽 */}
+          <svg
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M2 3.5h10" />
+            <path d="M2 7h9.5a1.5 1.5 0 0 1 0 3H6.4" />
+            <path d="M8.1 8.7 6.4 10l1.7 1.3" />
+          </svg>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** 共用扩展：JSON 语言 + 暖纸配色 + 查找替换（⌘F / ⌘R） + 快捷复制（⌘⇧C）；自动换行按开关挂载 */
 const baseExtensions = [
   json(),
-  EditorView.lineWrapping,
   paperHighlight,
   jsonCommentHighlight,
   search({ top: true, createPanel: createSearchPanel }),
@@ -267,17 +323,22 @@ function JsonCopyButton({ text }: { text: string }) {
       () => toast.error(t("editor.copyFailed")),
     );
   };
+  const label = t("common.copy");
   return (
-    <button
-      type="button"
-      className="json-copy"
-      title={t("common.copy")}
-      aria-label={t("common.copy")}
-      disabled={!text}
-      onClick={handleCopy}
-    >
-      <Copy aria-hidden="true" />
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="json-copy"
+          aria-label={label}
+          disabled={!text}
+          onClick={handleCopy}
+        >
+          <Copy aria-hidden="true" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -336,6 +397,46 @@ function propertyValueContextMenuExtension(
 
 const propertyValueCopyExtension = propertyValueContextMenuExtension();
 
+/**
+ * 多行文本粘贴进 JSON 字符串时自动转义合并成单行，避免破坏 JSON 结构：
+ * 1. 光标在字符串内部 → 转义内容（换行变 \\n，引号、反斜杠一并转义），不补引号；
+ * 2. 光标在 `"key":` 之后的值起始处 → 补引号并转义；
+ * 3. 恰好选中整个字符串值（含引号）→ 整体替换为转义后的新字符串。
+ * 单行文本走默认粘贴，行为不变。
+ */
+const pasteEscapeExtension = EditorView.domEventHandlers({
+  paste(event, view) {
+    const text = event.clipboardData?.getData("text/plain");
+    if (!text || !/[\r\n]/.test(text)) return false;
+
+    const range = view.state.selection.main;
+    const node = syntaxTree(view.state).resolveInner(range.from, 0);
+    let insert: string | null = null;
+
+    if (range.empty) {
+      if (node.name === "String" && range.head > node.from && range.head < node.to) {
+        /* 字符串内部：仅转义，不补引号 */
+        insert = JSON.stringify(text).slice(1, -1);
+      } else {
+        /* `"key":` 后等待值的位置：补引号 */
+        const before = view.state.doc.sliceString(Math.max(0, range.head - 200), range.head);
+        if (/:\s*$/.test(before)) insert = JSON.stringify(text);
+      }
+    } else if (node.name === "String" && node.from === range.from && node.to === range.to) {
+      insert = JSON.stringify(text);
+    }
+
+    if (!insert) return false;
+    event.preventDefault();
+    view.dispatch({
+      changes: { from: range.from, to: range.to, insert },
+      selection: { anchor: range.from + insert.length },
+      scrollIntoView: true,
+    });
+    return true;
+  },
+});
+
 /** 编辑器额外扩展：JSONC 语法检查（错误波浪线 + 行号槽标记） */
 const editorExtensions = [
   ...baseExtensions,
@@ -359,6 +460,7 @@ const editorExtensions = [
   ),
   lintGutter(),
   propertyValueCopyExtension,
+  pasteEscapeExtension,
 ];
 
 /** 查看器额外扩展：只读内容不可编辑时默认不可聚焦，补上 tabindex 让 ⌘F 可用 */
@@ -382,6 +484,11 @@ export function JsonEditor({ value, onChange, placeholder }: JsonEditorProps) {
       return err instanceof Error ? err.message : String(err);
     }
   }, [value]);
+  const [wrap, toggleWrap] = useJsonWrap();
+  const extensions = useMemo(
+    () => (wrap ? [...editorExtensions, EditorView.lineWrapping] : editorExtensions),
+    [wrap],
+  );
 
   return (
     <div className={`json-editor${error ? " json-editor-invalid" : ""}`}>
@@ -391,13 +498,14 @@ export function JsonEditor({ value, onChange, placeholder }: JsonEditorProps) {
         onChange={onChange}
         placeholder={placeholder}
         theme="none"
-        extensions={editorExtensions}
+        extensions={extensions}
         basicSetup={{
           foldGutter: true,
           highlightActiveLine: false,
           highlightActiveLineGutter: false,
         }}
       />
+      <JsonWrapButton wrap={wrap} onToggle={toggleWrap} />
       <JsonCopyButton text={value} />
       {error && (
         <div className="json-editor-error" role="alert">
@@ -417,14 +525,16 @@ export function JsonViewer({
   value: string;
   onPropertyContextMenu?: (menu: JsonPropertyContextMenu) => void;
 }) {
+  const [wrap, toggleWrap] = useJsonWrap();
   const extensions = useMemo(
     () => [
       ...viewerExtensions,
       onPropertyContextMenu
         ? propertyValueContextMenuExtension(onPropertyContextMenu)
         : propertyValueCopyExtension,
+      ...(wrap ? [EditorView.lineWrapping] : []),
     ],
-    [onPropertyContextMenu],
+    [onPropertyContextMenu, wrap],
   );
 
   return (
@@ -442,6 +552,7 @@ export function JsonViewer({
           highlightActiveLineGutter: false,
         }}
       />
+      <JsonWrapButton wrap={wrap} onToggle={toggleWrap} />
       <JsonCopyButton text={value} />
     </div>
   );

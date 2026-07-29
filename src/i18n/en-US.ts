@@ -354,6 +354,15 @@ export const enUS: Record<keyof typeof zhCN, string> = {
     "Global variables apply to all environments in this project and can be referenced in requests via {{variableName}}.",
   "env.globalParamsHint":
     "Global parameters are automatically added to every request in this project. Header, Cookie and Query types are supported.",
+  "env.importUrlRules": "Import URL rules",
+  "env.importUrlRulesHint":
+    "When importing a request, the first matching rule rewrites its URL: prefix rules match the start, regex rules match the whole address, and an empty replacement removes that part. For example, replacing the prefix http://host:port/api/ with nothing yields a relative path that resolves against the active environment's base URL.",
+  "env.ruleMatch": "Match, e.g. http://host:port/api/",
+  "env.ruleReplace": "Replace with (may be empty)",
+  "env.ruleRegex": "Regex",
+  "env.addRule": "Add rule",
+  "env.deleteRule": "Delete rule",
+  "env.invalidRegex": "Invalid regex; this rule is skipped on import",
   "env.envNamePlaceholder": "Environment name",
   "env.deleteEnv": "Delete environment",
   "env.baseUrl": "Base URL",

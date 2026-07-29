@@ -25,7 +25,8 @@ import {
 import { loadSettings } from "./lib/settings";
 import type { CreateProjectInput, Project } from "./types/project";
 import type { QuickRequest } from "./types/quick";
-import type { ParsedCurl } from "./utils/curl";
+import { applyImportUrlRules, type ParsedCurl } from "./utils/curl";
+import { getProjectGlobals } from "./lib/environments";
 import "./App.css";
 
 function App() {
@@ -224,6 +225,9 @@ function App() {
       setProjects((prev) =>
         prev.some((item) => item.id === project.id) ? prev : [...prev, project],
       );
+      // 首页导入属于草稿项目，套用其项目级导入 URL 规则
+      const globals = await getProjectGlobals(project.id);
+      parsed.url = applyImportUrlRules(parsed.url, globals.importUrlRules);
       setPendingCurl(parsed);
       setPendingCurlProjectId(project.id);
       handleOpenProject(project.id);

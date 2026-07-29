@@ -1,6 +1,7 @@
 import { ChevronRight, Import, Pencil, Plus, Search, Trash2, Zap } from "lucide-react";
 import { type CSSProperties, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { METHODS } from "../constants/methods";
 import { getProjectIcon } from "../constants/projectIcons";
 import { useShortcutAction } from "../hooks/useShortcuts";
@@ -306,30 +307,38 @@ function Home({
                   }}
                 >
                   <div className="project-card-actions">
-                    <button
-                      type="button"
-                      className="project-card-action"
-                      title={t("home.rename")}
-                      aria-label={`${t("home.rename")} ${project.name}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onEditProject(project);
-                      }}
-                    >
-                      <Pencil />
-                    </button>
-                    <button
-                      type="button"
-                      className="project-card-action project-card-action-danger"
-                      title={t("common.delete")}
-                      aria-label={`${t("common.delete")} ${project.name}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onDeleteProject(project);
-                      }}
-                    >
-                      <Trash2 />
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="project-card-action"
+                          aria-label={`${t("home.rename")} ${project.name}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onEditProject(project);
+                          }}
+                        >
+                          <Pencil />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("home.rename")}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="project-card-action project-card-action-danger"
+                          aria-label={`${t("common.delete")} ${project.name}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDeleteProject(project);
+                          }}
+                        >
+                          <Trash2 />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("common.delete")}</TooltipContent>
+                    </Tooltip>
                   </div>
                   <div className="project-card-head">
                     <ProjectIconBadge icon={project.icon} size={20} badgeSize={42} />

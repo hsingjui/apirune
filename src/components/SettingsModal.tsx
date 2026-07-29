@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePersistentState } from "../hooks/usePersistentState";
 import { type Language, setLanguage, useI18n } from "../i18n";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "../lib/settings";
@@ -208,15 +209,19 @@ function SettingsModal({ visible, onClose }: SettingsModalProps) {
           <div className="settings-content">
             <header className="settings-content-header">
               <h2 className="settings-content-title">{t(activeSection.labelKey)}</h2>
-              <button
-                type="button"
-                className="settings-close"
-                title={t("common.close")}
-                aria-label={t("common.close")}
-                onClick={onClose}
-              >
-                <X />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="settings-close"
+                    aria-label={t("common.close")}
+                    onClick={onClose}
+                  >
+                    <X />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("common.close")}</TooltipContent>
+              </Tooltip>
             </header>
 
             <div className="settings-content-body">
