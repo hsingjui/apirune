@@ -208,6 +208,19 @@ function serializeCookies(pairs: QueryParam[]): string {
 }
 
 /** 路径参数占位符：单层花括号 {name}，不匹配环境变量的 {{name}} */
+/** 从手动粘贴的 URL 中拆出 query，URL 保留 hash 但不保留 query。 */
+function extractUrlQuery(value: string): { url: string; params: QueryParam[] } | null {
+  const queryStart = value.indexOf("?");
+  if (queryStart < 0) return null;
+  const hashStart = value.indexOf("#", queryStart);
+  const queryEnd = hashStart < 0 ? value.length : hashStart;
+  const params: QueryParam[] = [];
+  new URLSearchParams(value.slice(queryStart + 1, queryEnd)).forEach((value, key) => {
+    params.push({ key, value, enabled: true });
+  });
+  return { url: `${value.slice(0, queryStart)}${value.slice(queryEnd)}`, params };
+}
+
 const PATH_PARAM_PATTERN = /(?<!\{)\{([^{}\s/]+)\}(?!\})/g;
 
 /** 从 URL 中提取路径参数名（按出现顺序去重） */
@@ -358,6 +371,15 @@ function RequestEditor({
   }, [url]);
 
   /** 拖拽响应区顶缘调整高度：最高为编辑器一半，向下拖过阈值则折叠，折叠后仍可拖开 */
+  /** 粘贴完整 URL 时将 query 同步到 Params 页签，避免请求地址与参数表重复维护。 */
+  const handleUrlPaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    const parsed = extractUrlQuery(event.clipboardData.getData("text"));
+    if (!parsed) return;
+    event.preventDefault();
+    setUrl(parsed.url);
+    setParams(parsed.params);
+  };
+
   const startResponseResize = (event: React.PointerEvent) => {
     event.preventDefault();
     const startY = event.clientY;
@@ -852,6 +874,7 @@ function RequestEditor({
             value={url}
             onChange={(event) => setUrl(event.target.value)}
             style={{ ["--request-method-color" as string]: methodColor }}
+            onPaste={handleUrlPaste}
           />
         </div>
         <Button disabled={sending} onClick={handleSend}>
