@@ -117,8 +117,9 @@
   width: 44px;
   height: 44px;
   border-radius: var(--border-radius-medium);
-  background-color: var(--c-accent-faint);
-  color: var(--c-accent);
+  /* 与工作区主页快捷卡片一致的配色：快速请求 = --pi-amber */
+  background-color: color-mix(in srgb, var(--pi-amber) 10%, transparent);
+  color: var(--pi-amber);
   transition: transform var(--ease-out);
 }
 
@@ -144,18 +145,18 @@
 }
 
 .home-quick-card:hover .home-quick-arrow {
-  color: var(--c-accent);
+  color: var(--pi-amber);
   transform: translateX(2px);
 }
 
-/* 导入请求卡片：绿色图标，与工作区导入入口一致 */
+/* 导入请求卡片：与工作区主页快捷卡片一致，--pi-green */
 .home-quick-card-import .home-quick-icon {
-  background-color: rgba(var(--success-6), 0.15);
-  color: rgb(var(--success-6));
+  background-color: color-mix(in srgb, var(--pi-green) 10%, transparent);
+  color: var(--pi-green);
 }
 
 .home-quick-card-import:hover .home-quick-arrow {
-  color: rgb(var(--success-6));
+  color: var(--pi-green);
 }
 
 .home-quick-text {

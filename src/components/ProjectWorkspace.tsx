@@ -3,6 +3,7 @@ import {
   ChevronDown,
   History,
   Import,
+  Info,
   LayoutGrid,
   Menu,
   MoreHorizontal,
@@ -11,10 +12,12 @@ import {
   Plus,
   Search,
   Settings,
+  Trash2,
   X,
   Zap,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,9 +35,15 @@ import {
   useShortcutAction,
   useTabCycleInterceptor,
 } from "../hooks/useShortcuts";
-import { getLanguage, useI18n } from "../i18n";
-import { listEnvironments, loadActiveEnvId, saveActiveEnvId } from "../lib/environments";
-import type { Environment } from "../types/environment";
+import { getLanguage, t, useI18n } from "../i18n";
+import {
+  getProjectGlobals,
+  listEnvironments,
+  loadActiveEnvId,
+  saveActiveEnvId,
+  saveProjectGlobals,
+} from "../lib/environments";
+import type { Environment, ImportUrlRule, ProjectGlobals } from "../types/environment";
 import type { HistoryEntry } from "../types/history";
 import type { Project } from "../types/project";
 import type { QuickRequest } from "../types/quick";
@@ -123,6 +132,12 @@ const NAV_ITEMS: { key: SectionKey; labelKey: string; Icon: typeof LayoutGrid }[
   { key: "apis", labelKey: "workspace.requests", Icon: LayoutGrid },
   { key: "history", labelKey: "workspace.history", Icon: History },
   { key: "settings", labelKey: "workspace.projectSettings", Icon: Settings },
+];
+
+/** 项目设置页左侧页签；按钮样式复用 SettingsModal.css 的 .settings-nav-item */
+const SETTINGS_TABS: { key: string; labelKey: string; Icon: typeof LayoutGrid }[] = [
+  { key: "info", labelKey: "workspace.projectInfo", Icon: Info },
+  { key: "rules", labelKey: "env.importUrlRules", Icon: Import },
 ];
 
 /** 请求管理主区的快捷入口卡片 */
@@ -214,6 +229,11 @@ function ProjectWorkspace({
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [envMenuOpen, setEnvMenuOpen] = useState(false);
   const [activeEnvId, setActiveEnvId] = useState<string | null>(null);
+  // 项目设置页的导入 URL 规则：连同全局变量/参数整体加载，回存时不覆盖其它项
+  const [globals, setGlobals] = useState<ProjectGlobals | null>(null);
+  const [settingsTab, setSettingsTab] = useState("info");
+  const [rulesDirty, setRulesDirty] = useState(false);
+  const [savingRules, setSavingRules] = useState(false);
   const treeRef = useRef<ApiTreeHandle>(null);
   // 主页导入 cURL 去重：StrictMode 下 effect 重复执行时按引用判重，避免开出两个标签
   const initialCurlRef = useRef<ParsedCurl | null>(null);
@@ -268,6 +288,37 @@ function ProjectWorkspace({
       .then(setActiveEnvId)
       .catch((error) => console.error("加载环境选择失败", error));
   }, [project.id]);
+
+  // 进入项目设置页时按需加载全局配置（含导入 URL 规则）
+  // biome-ignore lint/correctness/useExhaustiveDependencies: t 仅用于 catch 一次性 toast，无需因语言变化重跑
+  useEffect(() => {
+    if (section !== "settings") return;
+    getProjectGlobals(project.id)
+      .then((loaded) => {
+        setGlobals(loaded);
+        setRulesDirty(false);
+      })
+      .catch((error) => {
+        console.error("加载导入 URL 规则失败", error);
+        toast.error(t("workspace.importRulesLoadFailed"));
+      });
+  }, [section, project.id]);
+
+  /** 保存导入 URL 规则 */
+  const saveImportRules = async () => {
+    if (!globals) return;
+    setSavingRules(true);
+    try {
+      await saveProjectGlobals(project.id, globals);
+      setRulesDirty(false);
+      toast.success(t("workspace.importRulesSaved"));
+    } catch (error) {
+      console.error("保存导入 URL 规则失败", error);
+      toast.error(t("workspace.importRulesSaveFailed"));
+    } finally {
+      setSavingRules(false);
+    }
+  };
 
   const showSidebar = section === "apis" && !sidebarCollapsed;
 
@@ -954,6 +1005,7 @@ function ProjectWorkspace({
                       environment={activeEnv}
                       active={activeRequestId === tab.id}
                       initial={tab.initial}
+                      importUrlRules={globals?.importUrlRules}
                       requestId={tab.requestId}
                       requestName={tab.name}
                       initialFolderId={tab.folderId}
@@ -1001,26 +1053,96 @@ function ProjectWorkspace({
 
           {section === "settings" && (
             <div className="workspace-content workspace-settings">
-              <h2 className="workspace-settings-title">{t("workspace.projectSettings")}</h2>
-              <div className="workspace-settings-card">
-                <div className="workspace-settings-profile">
-                  <ProjectIconBadge icon={project.icon} size={24} badgeSize={48} />
-                  <span className="workspace-settings-name">{project.name}</span>
+              {/* 与全局设置弹窗同款分栏；面板样式复用 SettingsModal.css 的 settings-* */}
+              <div className="settings-layout workspace-settings-panel">
+                <nav className="settings-nav" aria-label={t("workspace.projectSettings")}>
+                  <span className="settings-nav-group">{t("workspace.projectSettings")}</span>
+                  {SETTINGS_TABS.map(({ key, labelKey, Icon }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`settings-nav-item${settingsTab === key ? " settings-nav-item-active" : ""}`}
+                      onClick={() => setSettingsTab(key)}
+                    >
+                      <Icon />
+                      <span>{t(labelKey)}</span>
+                    </button>
+                  ))}
+                </nav>
+
+                <div className="settings-content">
+                  <header className="settings-content-header">
+                    <h2 className="settings-content-title">
+                      {t(SETTINGS_TABS.find((item) => item.key === settingsTab)?.labelKey ?? "")}
+                    </h2>
+                  </header>
+
+                  <div className="settings-content-body">
+                    {settingsTab === "info" && (
+                      <div>
+                        <div className="workspace-settings-profile">
+                          <ProjectIconBadge icon={project.icon} size={24} badgeSize={48} />
+                          <span className="workspace-settings-name">{project.name}</span>
+                        </div>
+                        <dl className="workspace-settings-meta">
+                          <div className="workspace-settings-row">
+                            <dt>{t("workspace.projectId")}</dt>
+                            <dd className="workspace-settings-mono">{project.id}</dd>
+                          </div>
+                          <div className="workspace-settings-row">
+                            <dt>{t("workspace.createdAt")}</dt>
+                            <dd>{formatDateTime(project.createdAt)}</dd>
+                          </div>
+                          <div className="workspace-settings-row">
+                            <dt>{t("workspace.updatedAt")}</dt>
+                            <dd>{formatDateTime(project.updatedAt)}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                    )}
+
+                    {settingsTab === "rules" && (
+                      <div>
+                        <div className="workspace-settings-hint">
+                          <p>{t("env.importUrlRulesHint")}</p>
+                          <ul className="workspace-settings-examples">
+                            {[1, 2, 3].map((n) => (
+                              <li key={n}>
+                                <span className="workspace-settings-example-tag">
+                                  {t(`env.ruleEx${n}Tag`)}
+                                </span>
+                                <code>{t(`env.ruleEx${n}Match`)}</code>
+                                <span aria-hidden="true" className="workspace-settings-example-arrow">
+                                  →
+                                </span>
+                                <code>{t(`env.ruleEx${n}Replace`)}</code>
+                                <span>{t(`env.ruleEx${n}Text`)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        {globals && (
+                          <ImportUrlRuleTable
+                            items={globals.importUrlRules}
+                            onChange={(importUrlRules) => {
+                              setGlobals((prev) => (prev ? { ...prev, importUrlRules } : prev));
+                              setRulesDirty(true);
+                            }}
+                          />
+                        )}
+                        <div className="workspace-settings-actions">
+                          <Button
+                            size="sm"
+                            disabled={!rulesDirty || savingRules}
+                            onClick={saveImportRules}
+                          >
+                            {t("common.save")}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <dl className="workspace-settings-meta">
-                  <div className="workspace-settings-row">
-                    <dt>{t("workspace.projectId")}</dt>
-                    <dd className="workspace-settings-mono">{project.id}</dd>
-                  </div>
-                  <div className="workspace-settings-row">
-                    <dt>{t("workspace.createdAt")}</dt>
-                    <dd>{formatDateTime(project.createdAt)}</dd>
-                  </div>
-                  <div className="workspace-settings-row">
-                    <dt>{t("workspace.updatedAt")}</dt>
-                    <dd>{formatDateTime(project.updatedAt)}</dd>
-                  </div>
-                </dl>
               </div>
             </div>
           )}
@@ -1086,6 +1208,103 @@ function ProjectWorkspace({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** 校验正则表达式是否合法 */
+function isValidRegex(pattern: string): boolean {
+  try {
+    new RegExp(pattern);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 导入 URL 规则表格：匹配 / 替换为 / 正则开关，末尾带自动追加的占位行
+ *  表格容器样式复用 EnvironmentModal.css 的 .env-table / .env-rule-*（与全局变量表同款） */
+function ImportUrlRuleTable({
+  items,
+  onChange,
+}: {
+  items: ImportUrlRule[];
+  onChange: (items: ImportUrlRule[]) => void;
+}) {
+  const updateItem = (index: number, patch: Partial<ImportUrlRule>) => {
+    if (index === items.length) {
+      onChange([...items, { match: "", replace: "", regex: false, ...patch }]);
+      return;
+    }
+    onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  };
+
+  return (
+    <div className="env-table">
+      <div className="env-table-head env-rule-grid">
+        <span>{t("env.ruleMatch")}</span>
+        <span>{t("env.ruleReplace")}</span>
+        <span>{t("env.ruleRegex")}</span>
+        <span aria-hidden="true" />
+      </div>
+      {[...items, { match: "", replace: "", regex: false }].map((rule, index) => {
+        const isPlaceholder = index === items.length;
+        const invalid = !isPlaceholder && rule.regex && rule.match && !isValidRegex(rule.match);
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 受控键值行 + 末尾占位行，数据项无稳定 id，以索引定位
+          <div key={index} className="env-table-row env-rule-grid">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <input
+                  className={invalid ? "env-rule-invalid" : undefined}
+                  placeholder={isPlaceholder ? t("env.addRule") : t("env.ruleMatch")}
+                  value={rule.match}
+                  spellCheck={false}
+                  onChange={(event) => updateItem(index, { match: event.target.value })}
+                />
+              </TooltipTrigger>
+              {invalid && <TooltipContent>{t("env.invalidRegex")}</TooltipContent>}
+            </Tooltip>
+            <input
+              placeholder={t("env.ruleReplace")}
+              value={rule.replace}
+              spellCheck={false}
+              onChange={(event) => updateItem(index, { replace: event.target.value })}
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={`env-rule-regex${rule.regex ? " active" : ""}`}
+                  aria-label={t("env.ruleRegex")}
+                  aria-pressed={rule.regex}
+                  onClick={() => updateItem(index, { regex: !rule.regex })}
+                >
+                  .*
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{t("env.ruleRegex")}</TooltipContent>
+            </Tooltip>
+            {isPlaceholder ? (
+              <span aria-hidden="true" />
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="env-table-remove"
+                    aria-label={t("env.deleteRule")}
+                    onClick={() => onChange(items.filter((_, i) => i !== index))}
+                  >
+                    <Trash2 />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("common.delete")}</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

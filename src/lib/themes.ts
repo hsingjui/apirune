@@ -88,6 +88,18 @@ export const THEMES: ThemeDef[] = [
     appearance: "dark",
     preview: { canvas: "#1c2529", side: "#253034", line: "#435459", accent: "#87c0ca" },
   },
+  {
+    id: "mono",
+    name: "极简",
+    appearance: "light",
+    preview: { canvas: "#fafafa", side: "#f0f0f0", line: "#e0e0e0", accent: "#3d3d3d" },
+  },
+  {
+    id: "mono-dark",
+    name: "极简夜",
+    appearance: "dark",
+    preview: { canvas: "#1a1a1a", side: "#242424", line: "#383838", accent: "#d4d4d4" },
+  },
 ];
 
 /** 字体选项：不打包字体文件，仅切换字体栈，缺失时按栈回退 */

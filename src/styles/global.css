@@ -35,7 +35,7 @@
   /* 5. 项目图标色板：OKLCH 等明度/等彩度，仅色相不同 → 视觉天然统一；
      深色主题组覆盖 --pi-l / --pi-c 提亮，图标色随主题自动切换 */
   --pi-l: 53%;
-  --pi-c: 0.14;
+  --pi-c: 0.09;
   --pi-red: oklch(var(--pi-l) var(--pi-c) 28);
   --pi-orange: oklch(var(--pi-l) var(--pi-c) 55);
   --pi-amber: oklch(var(--pi-l) var(--pi-c) 82);
@@ -157,7 +157,7 @@
   --destructive: #e8695a;
   --c-border: #3d3a34;
   --pi-l: 74%;
-  --pi-c: 0.13;
+  --pi-c: 0.09;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
@@ -297,7 +297,7 @@
   --destructive: #e8695a;
   --c-border: #383c42;
   --pi-l: 74%;
-  --pi-c: 0.13;
+  --pi-c: 0.09;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
@@ -446,7 +446,7 @@
   --destructive: #e8695a;
   --c-border: #383e35;
   --pi-l: 74%;
-  --pi-c: 0.13;
+  --pi-c: 0.09;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
@@ -509,7 +509,7 @@
   --destructive: #e8695a;
   --c-border: #3b3744;
   --pi-l: 74%;
-  --pi-c: 0.13;
+  --pi-c: 0.09;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
@@ -656,7 +656,7 @@
   --destructive: #e8695a;
   --c-border: #344246;
   --pi-l: 74%;
-  --pi-c: 0.13;
+  --pi-c: 0.09;
   --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
@@ -701,6 +701,111 @@
   --danger-6: 232, 105, 90;
   --success-6: 92, 184, 110;
   --color-mask-bg: rgba(0, 0, 0, 0.6);
+}
+
+/* --- 极简（浅色，纯黑白灰，无色相） --- */
+:root[data-theme="mono"] {
+  --c-canvas: #fafafa;
+  --c-surface: #f0f0f0;
+  --c-surface-high: #ffffff;
+  --c-ink-primary: #262626;
+  --c-ink-secondary: #737373;
+  --c-ink-tertiary: #a3a3a3;
+  --c-accent: #3d3d3d;
+  --c-accent-hover: #262626;
+  --c-accent-faint: rgba(61, 61, 61, 0.12);
+  --c-selection-bg: rgba(61, 61, 61, 0.22);
+  --c-focus-ring: rgba(38, 38, 38, 0.1);
+  --c-border: #e0e0e0;
+  /* 墨黑强调色上用白色文字 */
+  --primary-foreground: #ffffff;
+}
+
+[data-theme="mono"] body {
+  --gray-1: 250, 250, 250;
+  --gray-2: 240, 240, 240;
+  --gray-3: 224, 224, 224;
+  --gray-4: 200, 200, 200;
+  --gray-5: 170, 170, 170;
+  --gray-6: 140, 140, 140;
+  --gray-7: 115, 115, 115;
+  --gray-8: 90, 90, 90;
+  --gray-9: 60, 60, 60;
+  --gray-10: 38, 38, 38;
+  --primary-1: 242, 242, 242;
+  --primary-2: 224, 224, 224;
+  --primary-3: 197, 197, 197;
+  --primary-4: 163, 163, 163;
+  --primary-5: 96, 96, 96;
+  --primary-6: 61, 61, 61;
+  --primary-7: 48, 48, 48;
+  --primary-8: 36, 36, 36;
+  --primary-9: 24, 24, 24;
+  --color-mask-bg: rgba(38, 38, 38, 0.42);
+}
+
+/* --- 极简夜（深色，纯灰阶，亮灰强调色） --- */
+:root[data-theme="mono-dark"] {
+  --c-canvas: #1a1a1a;
+  --c-surface: #242424;
+  --c-surface-high: #2a2a2a;
+  --c-ink-primary: #e5e5e5;
+  --c-ink-secondary: #a3a3a3;
+  --c-ink-tertiary: #737373;
+  --c-accent: #d4d4d4;
+  --c-accent-hover: #e5e5e5;
+  --c-accent-faint: rgba(212, 212, 212, 0.18);
+  --c-selection-bg: #525252;
+  --c-focus-ring: rgba(229, 229, 229, 0.12);
+  --destructive: #e8695a;
+  --c-border: #383838;
+  --pi-l: 74%;
+  --pi-c: 0.09;
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-quick-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 28px -12px rgba(0, 0, 0, 0.5);
+  --shadow-quick-card-hover:
+    0 2px 4px rgba(0, 0, 0, 0.3), 0 16px 36px -12px rgba(0, 0, 0, 0.55);
+  --json-key: #dea88e;
+  --json-string: #a3c293;
+  --json-number: #8fb3e3;
+  --json-bool: #c39ee8;
+  --json-invalid: #f0776a;
+  --method-get: #a3c293;
+  --method-post: #d9a06f;
+  --method-put: #8fb3e3;
+  --method-patch: #c39ee8;
+  --method-delete: #d87f72;
+  --method-head: #7fbcb1;
+  --method-options: #737373;
+  /* 亮灰强调色上用深墨文字保证对比度 */
+  --primary-foreground: #1a1a1a;
+}
+
+[data-theme="mono-dark"] body {
+  --gray-1: 30, 30, 30;
+  --gray-2: 36, 36, 36;
+  --gray-3: 56, 56, 56;
+  --gray-4: 74, 74, 74;
+  --gray-5: 92, 92, 92;
+  --gray-6: 122, 122, 122;
+  --gray-7: 143, 143, 143;
+  --gray-8: 168, 168, 168;
+  --gray-9: 201, 201, 201;
+  --gray-10: 229, 229, 229;
+  --primary-1: 51, 51, 51;
+  --primary-2: 66, 66, 66;
+  --primary-3: 89, 89, 89;
+  --primary-4: 122, 122, 122;
+  --primary-5: 163, 163, 163;
+  --primary-6: 212, 212, 212;
+  --primary-7: 224, 224, 224;
+  --primary-8: 235, 235, 235;
+  --primary-9: 245, 245, 245;
+  --danger-1: 72, 42, 42;
+  --danger-6: 232, 105, 90;
+  --success-6: 92, 184, 110;
+  --color-mask-bg: rgba(0, 0, 0, 0.55);
 }
 
 html,
@@ -823,6 +928,44 @@ h4 {
 input,
 textarea {
   caret-color: var(--c-accent);
+}
+
+/* === 表格输入框：请求 Params/Headers 与环境变量表共用 ===
+   常态透明，悬停/聚焦才浮现描边；表格外的输入框见 ui/input.tsx。 */
+.request-params-row input,
+.env-table-row input {
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-medium);
+  background-color: transparent;
+  color: var(--color-text-1);
+  font-size: 13px;
+  padding: 6px 11px;
+  min-width: 0;
+  transition:
+    background-color var(--ease-out),
+    border-color var(--ease-out),
+    box-shadow var(--ease-out);
+}
+
+.request-params-row input::placeholder,
+.env-table-row input::placeholder {
+  color: var(--color-text-3);
+}
+
+/* 悬停：输入框从行底色中浮现 */
+.request-params-row input:hover,
+.env-table-row input:hover {
+  border-color: var(--c-border);
+  background-color: var(--c-surface-high);
+}
+
+/* 聚焦：中性色边框 + 轻微投影 */
+.request-params-row input:focus,
+.env-table-row input:focus {
+  outline: none;
+  border-color: rgb(var(--gray-5));
+  background-color: var(--c-surface-high);
+  box-shadow: var(--shadow-subtle);
 }
 
 /* === 图标基线 === */

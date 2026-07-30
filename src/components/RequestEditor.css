@@ -172,6 +172,7 @@
   border: none;
   background: transparent;
   color: var(--c-ink-secondary);
+  font-family: var(--font-mono);
   font-size: 13px;
   cursor: pointer;
   transition: color var(--ease-out);
@@ -299,13 +300,15 @@
   border: 1px solid var(--c-border);
   border-radius: var(--border-radius-medium);
   background-color: var(--c-surface-high);
-  overflow: hidden;
+  /* 不用 overflow:hidden 裁剪圆角：末行的参数名候选下拉需要溢出表格向下展开；
+     圆角改由表头 / 末行各自补齐 */
+  overflow: visible;
 }
 
 .request-params-head,
 .request-params-row {
   display: grid;
-  grid-template-columns: 24px 1fr 1.4fr 36px;
+  grid-template-columns: 24px 1fr 2fr 36px;
   align-items: center;
   gap: 8px;
 }
@@ -313,6 +316,8 @@
 .request-params-head {
   padding: 6px 8px;
   border-bottom: 1px solid var(--c-border);
+  border-radius: calc(var(--border-radius-medium) - 1px) calc(var(--border-radius-medium) - 1px)
+    0 0;
   background-color: var(--c-surface);
   color: var(--c-ink-tertiary);
   font-size: 12px;
@@ -337,6 +342,53 @@
 
 .request-params-row:last-child {
   border-bottom: none;
+  border-radius: 0 0 calc(var(--border-radius-medium) - 1px) calc(var(--border-radius-medium) - 1px);
+}
+
+/* === 参数名候选下拉（Headers 内置候选）：贴着参数名单元格，左右与输入框对齐 === */
+
+.request-suggest {
+  position: relative;
+  min-width: 0;
+}
+
+/* 包进容器后输入框不再是 grid 子项，需显式拉满列宽 */
+.request-suggest > input {
+  display: block;
+  width: 100%;
+}
+
+.request-suggest-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 2px);
+  right: 0;
+  left: 0;
+  max-height: 208px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--c-border);
+  border-radius: var(--border-radius-small);
+  background-color: var(--c-surface-high);
+  box-shadow: var(--shadow-float);
+  font-size: 13px;
+}
+
+.request-suggest-list li {
+  padding: 5px 10px;
+  border-radius: var(--border-radius-small);
+  color: var(--color-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.request-suggest-list li.is-active {
+  background-color: var(--c-accent-faint);
+  color: var(--c-accent);
 }
 
 /* 未启用的 Params / Headers 不参与发送；以浅灰底色和弱化文字区分 */
@@ -415,42 +467,13 @@
   opacity: 0.5;
 }
 
-.request-params-row input {
-  border: 1px solid transparent;
-  border-radius: var(--border-radius-medium);
-  background-color: transparent;
-  color: var(--color-text-1);
-  font-size: 13px;
-  padding: 6px 11px;
-  min-width: 0;
-  transition:
-    background-color var(--ease-out),
-    border-color var(--ease-out),
-    box-shadow var(--ease-out);
-}
-
-.request-params-row input::placeholder {
-  color: var(--color-text-3);
-}
+/* 表格输入框基础样式见 global.css（与环境变量表共用）。
+   下方只保留本表特有的覆盖：草稿占位行、只读路径行、禁用行。 */
 
 /* 末尾占位行「添加参数」提示：比常规 placeholder 更淡，避免与已填写内容混淆 */
 .request-params-row-draft input::placeholder {
   color: var(--c-ink-tertiary);
   opacity: 0.55;
-}
-
-/* 悬停：输入框从灰底行中浮现 */
-.request-params-row input:hover {
-  border-color: var(--c-border);
-  background-color: var(--c-surface-high);
-}
-
-/* 聚焦：中性色边框 + 轻微投影 */
-.request-params-row input:focus {
-  outline: none;
-  border-color: rgb(var(--gray-5));
-  background-color: var(--c-surface-high);
-  box-shadow: var(--shadow-subtle);
 }
 
 .request-params-remove {
@@ -493,7 +516,7 @@
 /* 带类型列的表单行：多一列类型选择 */
 .request-params-head.request-params-typed,
 .request-params-row.request-params-typed {
-  grid-template-columns: 24px 1fr 92px 1.4fr 36px;
+  grid-template-columns: 24px 1fr 92px 2fr 36px;
 }
 
 .request-params-head-type {
@@ -647,11 +670,13 @@
 
 /* 路径参数行：无多选框与删除列 */
 .request-path-row {
-  grid-template-columns: 1fr 1.4fr;
+  grid-template-columns: 1fr 2fr;
 }
 
 /* 只读的参数名：不呈现可编辑态 */
 .request-params-row.request-path-row input[readonly] {
+  border-color: transparent;
+  background-color: transparent;
   color: var(--color-text-2);
   cursor: default;
 }
@@ -1383,6 +1408,7 @@ body.is-response-resizing {
   gap: 5px;
   padding: 3px 8px;
   border: none;
+  font-family: var(--font-mono);
   background: transparent;
   color: var(--c-ink-secondary);
   font-size: 12px;
@@ -1814,6 +1840,35 @@ body.is-sse-resizing {
   padding: 16px;
 }
 
+/* 全局 Header 行的恢复默认按钮：复用小图标按钮尺寸 */
+.request-global-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  color: var(--c-ink-tertiary);
+  cursor: pointer;
+  transition:
+    color var(--ease-out),
+    background-color var(--ease-out);
+}
+
+.request-global-reset:hover {
+  background-color: var(--bg-hover, rgb(0 0 0 / 0.06));
+  color: var(--c-ink-primary);
+}
+
+.request-global-reset svg {
+  width: 13px;
+  height: 13px;
+}
+
 .request-cookies-hint {
   margin: 0;
   color: var(--color-text-3);
@@ -1964,90 +2019,6 @@ body.is-sse-resizing {
   min-height: 72px;
   line-height: 1.6;
   resize: vertical;
-}
-
-/* 变量名组合框：输入框 + 右侧展开箭头 + 已有变量下拉面板 */
-.response-var-combo {
-  position: relative;
-}
-
-.response-var-combo input {
-  padding-right: 34px;
-}
-
-.response-var-combo-toggle {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: var(--border-radius-small);
-  background: transparent;
-  color: var(--color-text-3);
-  cursor: pointer;
-  transition:
-    background-color var(--ease-out),
-    color var(--ease-out);
-}
-
-.response-var-combo-toggle:hover {
-  background-color: var(--color-neutral-2);
-  color: var(--color-text-1);
-}
-
-.response-var-combo-toggle svg {
-  width: 14px;
-  height: 14px;
-  transition: transform var(--ease-out);
-}
-
-.response-var-combo-toggle-open svg {
-  transform: rotate(180deg);
-}
-
-.response-var-options {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 10;
-  max-height: 192px;
-  margin: 0;
-  padding: 4px;
-  border: 1px solid var(--color-neutral-3);
-  border-radius: var(--border-radius-medium);
-  background-color: var(--color-bg-1);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
-  overflow-y: auto;
-  list-style: none;
-}
-
-.response-var-option {
-  display: block;
-  padding: 6px 8px;
-  border-radius: var(--border-radius-small);
-  color: var(--color-text-1);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.response-var-option-active {
-  background-color: var(--color-neutral-2);
-}
-
-.response-var-option-name {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
 }
 
 .response-var-scope {

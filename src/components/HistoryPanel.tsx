@@ -1,6 +1,6 @@
 import { save as saveFileDialog } from "@tauri-apps/plugin-dialog";
 import { ChevronRight, Download, History, Loader2, RotateCw, Trash2, Zap } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,9 @@ const DETAIL_TABS = ["body", "headers", "request"] as const;
 
 /** 每页加载条数 */
 const PAGE_SIZE = 100;
+
+/** 中缝拖拽时左栏与右侧详情各自的最小宽度 */
+const HISTORY_PANE_MIN_WIDTH = 240;
 
 /** 一条历史是否成功（收到响应且状态码 < 400） */
 function isOk(entry: HistoryEntrySummary): boolean {
@@ -108,6 +111,31 @@ function HistoryPanel({ projectId, onRestore }: HistoryPanelProps) {
   const [detail, setDetail] = useState<HistoryEntry | null>(null);
   const [detailTab, setDetailTab] = useState<(typeof DETAIL_TABS)[number]>("body");
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
+// 左栏宽度：null 用 CSS 默认 320px；拖过中缝后为像素值
+const [sidebarWidth, setSidebarWidth] = useState<number | null>(null);
+const rootRef = useRef<HTMLDivElement>(null);
+const sidebarRef = useRef<HTMLElement>(null);
+
+/** 拖拽中缝分隔线调整左栏宽度，两侧各保留最小宽度 */
+const startSidebarResize = (event: React.PointerEvent) => {
+  event.preventDefault();
+  const startX = event.clientX;
+  const startWidth = sidebarRef.current?.offsetWidth ?? 0;
+  const total = rootRef.current?.clientWidth ?? 0;
+  const max = Math.max(total - HISTORY_PANE_MIN_WIDTH, HISTORY_PANE_MIN_WIDTH);
+  const onMove = (e: PointerEvent) => {
+    const next = startWidth + (e.clientX - startX);
+    setSidebarWidth(Math.min(max, Math.max(HISTORY_PANE_MIN_WIDTH, next)));
+  };
+  const onUp = () => {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+    document.body.classList.remove("is-history-resizing");
+  };
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  document.body.classList.add("is-history-resizing");
+};
 
   // 二进制响应（Base64 存储）：图片类型生成 data URL 预览
   const detailImageUrl = useMemo(() => {
@@ -269,9 +297,13 @@ function HistoryPanel({ projectId, onRestore }: HistoryPanelProps) {
   };
 
   return (
-    <div className="history-panel">
+    <div ref={rootRef} className="history-panel">
       {/* 左侧：筛选 + 历史列表 */}
-      <aside className="history-sidebar">
+      <aside
+        ref={sidebarRef}
+        className="history-sidebar"
+        style={sidebarWidth !== null ? { width: sidebarWidth } : undefined}
+      >
         <div className="history-sidebar-header">
           <h3 className="history-sidebar-title">{t("history.title")}</h3>
           <div className="history-sidebar-actions">
@@ -486,6 +518,9 @@ function HistoryPanel({ projectId, onRestore }: HistoryPanelProps) {
           )}
         </div>
       </aside>
+
+      {/* 中缝拖拽手柄：骑在左栏右边框上 */}
+      <div className="history-resizer" aria-hidden="true" onPointerDown={startSidebarResize} />
 
       {/* 右侧：详情 */}
       <div className="history-detail">

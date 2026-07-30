@@ -256,7 +256,7 @@
 
 .env-table-grid {
   display: grid;
-  grid-template-columns: 1fr 1.4fr 36px;
+  grid-template-columns: 1fr 2fr 36px;
   align-items: center;
 }
 
@@ -280,25 +280,7 @@
   border-bottom: none;
 }
 
-.env-table-row input {
-  border: none;
-  border-radius: 0;
-  background-color: transparent;
-  color: var(--color-text-1);
-  font-size: 13px;
-  padding: 7px 12px;
-  min-width: 0;
-}
-
-.env-table-row input::placeholder {
-  color: var(--color-text-3);
-}
-
-.env-table-row input:focus {
-  outline: none;
-  background-color: var(--c-accent-faint);
-  box-shadow: none;
-}
+/* 表格输入框基础样式见 global.css（与请求参数表共用） */
 
 .env-table-remove {
   display: inline-flex;
@@ -354,24 +336,4 @@
 .env-auth-field > span {
   font-size: 12px;
   color: var(--c-ink-secondary);
-}
-
-/* === 导入 URL 规则表格：匹配 / 替换为 / 正则 / 删除 === */
-.env-rule-grid {
-  display: grid;
-  grid-template-columns: 2fr 1.4fr 48px 36px;
-  align-items: center;
-}
-
-.env-rule-checkbox {
-  justify-self: center;
-  width: 14px;
-  height: 14px;
-  accent-color: var(--c-accent);
-  cursor: pointer;
-}
-
-.env-rule-invalid {
-  color: var(--c-error) !important;
-  box-shadow: inset 0 0 0 1px var(--c-error) !important;
 }

@@ -14,6 +14,8 @@ export interface GlobalParam {
   in: GlobalParamIn;
   name: string;
   value: string;
+  /** 是否参与发送；缺省视为启用 */
+  enabled?: boolean;
 }
 
 /** 项目环境：前置 URL + 环境变量 */

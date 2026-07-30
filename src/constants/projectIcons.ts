@@ -50,7 +50,7 @@ export interface ProjectIconEntry {
   key: string;
   /** 引用 global.css 中的 --pi-* 色板变量（OKLCH 等明度/彩度），随主题自动适配明暗 */
   color: string;
-  Icon: ComponentType<{ style?: React.CSSProperties }>;
+  Icon: ComponentType<{ size?: number; style?: React.CSSProperties }>;
 }
 
 /** 新建项目时可选的内置图标（Lucide），颜色取自 --pi-* 统一色板；名称经文案 key `icon.{key}` 翻译 */

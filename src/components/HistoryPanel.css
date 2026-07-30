@@ -38,7 +38,38 @@
   gap: 2px;
 }
 
+/* 中缝拖拽手柄：骑在左栏右边框上，悬停 / 拖拽时显示强调线 */
+.history-resizer {
+  flex-shrink: 0;
+  z-index: 1;
+  width: 6px;
+  margin: 0 -3px;
+  cursor: col-resize;
+}
+
+.history-resizer:hover,
+body.is-history-resizing .history-resizer {
+  background: linear-gradient(
+    to right,
+    transparent 2px,
+    var(--c-accent) 2px,
+    var(--c-accent) 4px,
+    transparent 4px
+  );
+}
+
+body.is-history-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
 /* === 筛选区 === */
+
+/* 搜索框全局 Input 常态透明，筛选区需默认可见，补回描边与底色 */
+.history-filter-search {
+  border-color: var(--c-border);
+  background: var(--c-surface-high);
+}
 
 .history-filters {
   display: flex;

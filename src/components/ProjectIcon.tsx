@@ -9,7 +9,7 @@ interface ProjectIconProps {
 function ProjectIcon({ icon, size = 16 }: ProjectIconProps) {
   const entry = getProjectIcon(icon);
   const { Icon } = entry;
-  return <Icon style={{ fontSize: size, color: entry.color }} />;
+  return <Icon size={size} style={{ color: entry.color }} />;
 }
 
 interface ProjectIconBadgeProps extends ProjectIconProps {
@@ -34,7 +34,7 @@ export function ProjectIconBadge({ icon, size = 20, badgeSize = 40 }: ProjectIco
         flexShrink: 0,
       }}
     >
-      <Icon style={{ fontSize: size, color: entry.color }} />
+      <Icon size={size} style={{ color: entry.color }} />
     </span>
   );
 }

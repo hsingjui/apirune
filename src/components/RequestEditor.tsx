@@ -2,7 +2,6 @@ import { open as openFileDialog, save as saveFileDialog } from "@tauri-apps/plug
 import {
   ArrowDown,
   Braces,
-  ChevronDown,
   ChevronRight,
   CircleAlert,
   CircleCheck,
@@ -12,6 +11,7 @@ import {
   FolderOpen,
   Loader2,
   Plus,
+  RotateCcw,
   Search,
   SendHorizontal,
   SquarePen,
@@ -50,7 +50,13 @@ import {
 } from "../lib/http";
 import { createQuickRequest, updateQuickRequest } from "../lib/quickRequests";
 import { loadSettings, toProxyConfig } from "../lib/settings";
-import type { Environment, GlobalParamIn } from "../types/environment";
+import type {
+  Environment,
+  GlobalParam,
+  GlobalParamIn,
+  ImportUrlRule,
+  ProjectGlobals,
+} from "../types/environment";
 import type { HttpResponseData, SseEvent } from "../types/http";
 import type { QuickRequest } from "../types/quick";
 import type {
@@ -61,7 +67,7 @@ import type {
   KeyValueItem,
 } from "../types/request";
 import type { CodegenInput } from "../utils/codegen";
-import type { ParsedCurl } from "../utils/curl";
+import { applyImportUrlRules, type ParsedCurl } from "../utils/curl";
 import { resolveRequestWithEnv } from "../utils/env";
 import { createId } from "../utils/id";
 import { parseJsonWithComments, stripJsonComments } from "../utils/jsonc";
@@ -70,12 +76,27 @@ import { JsonEditor, type JsonPropertyContextMenu, JsonViewer } from "./JsonView
 import SaveRequestModal from "./SaveRequestModal";
 import "./RequestEditor.css";
 
-const EDITOR_TABS = ["Params", "Body", "Headers", "Cookies", "Auth", "Settings"] as const;
+const EDITOR_TABS = ["Params", "Body", "Headers", "Cookies"] as const;
 
-/** 页签显示名：除 Settings 外均为英文术语，直接展示 */
-function editorTabLabel(tab: (typeof EDITOR_TABS)[number]): string {
-  return tab === "Settings" ? t("editor.tabSettings") : tab;
-}
+/** Headers 页签参数名的内置候选，点击输入框弹出；Header 名为标准令牌，不做翻译。
+    Cookie 不含在内：它在 Cookies 页签单独管理，加入 Headers 发送前会被过滤 */
+const COMMON_HEADERS = [
+  "Accept",
+  "Accept-Encoding",
+  "Accept-Language",
+  "Authorization",
+  "Cache-Control",
+  "Content-Type",
+  "If-Modified-Since",
+  "If-None-Match",
+  "Origin",
+  "Referer",
+  "User-Agent",
+  "X-API-Key",
+  "X-CSRF-Token",
+  "X-Forwarded-For",
+  "X-Requested-With",
+];
 
 const BODY_TYPES: BodyType[] = ["none", "json", "form-data", "x-www-form-urlencoded", "raw"];
 
@@ -144,6 +165,8 @@ interface RequestEditorProps {
   active?: boolean;
   /** 初始请求配置（如 curl 导入的解析结果），仅首次渲染时生效 */
   initial?: ParsedCurl;
+  /** 项目导入 URL 规则：粘贴地址时同样套用，便于与环境 baseUrl 组合 */
+  importUrlRules?: ImportUrlRule[];
   /** 已保存快捷请求的 id；有值时保存为更新而非新建 */
   requestId?: string;
   /** 已保存的请求名称，保存弹窗回填 */
@@ -279,6 +302,7 @@ function RequestEditor({
   environment = null,
   active = false,
   initial,
+  importUrlRules,
   requestId,
   requestName,
   initialFolderId,
@@ -311,6 +335,11 @@ function RequestEditor({
       .filter((item) => item.key.toLowerCase() === "cookie")
       .flatMap((item) => parseCookiePairs(item.value)),
   );
+  // 全局 Header：展示项目级参数；请求页上的值 / 启用修改只记本地覆盖，仅当前请求生效
+  const [globalHeaders, setGlobalHeaders] = useState<GlobalParam[]>([]);
+  const [globalHeaderEdits, setGlobalHeaderEdits] = useState<
+    Record<string, { value: string; enabled: boolean }>
+  >({});
   const [bodyType, setBodyType] = useState<BodyType>(initial?.bodyType ?? "none");
   const [bodyText, setBodyText] = useState(() => initBodyText(initial));
   const [formItems, setFormItems] = useState<FormRow[]>(() => initFormItems(initial));
@@ -351,6 +380,73 @@ function RequestEditor({
   useEffect(() => {
     if (active && !initial?.url) urlInputRef.current?.focus();
   }, []);
+  // 切到 Headers 页签时重新读取全局 Header（可能在环境弹窗中被修改）
+  useEffect(() => {
+    if (activeTab !== "Headers") return;
+    getProjectGlobals(projectId)
+      .then((globals) =>
+        setGlobalHeaders(globals.params.filter((item) => item.in === "header")),
+      )
+      .catch((err) => console.error("读取全局 Header 参数失败", err));
+  }, [activeTab, projectId]);
+
+  // 应用了本地覆盖后的全局 Header 工作副本
+  const globalHeaderRows = globalHeaders.map((item) => {
+    const edit = globalHeaderEdits[item.name.toLowerCase()];
+    return {
+      key: item.name,
+      value: edit?.value ?? item.value,
+      enabled: edit?.enabled ?? item.enabled !== false,
+    };
+  });
+
+  /** 修改全局 Header 的值 / 启用状态：只记本地覆盖，不写回项目全局参数 */
+  const handleGlobalHeadersChange = (rows: QueryParam[]) => {
+    setGlobalHeaderEdits((prev) => {
+      const next = { ...prev };
+      for (const row of rows) {
+        const key = row.key.toLowerCase();
+        const def = globalHeaders.find((item) => item.name.toLowerCase() === key);
+        if (!def) continue;
+        const enabled = row.enabled !== false;
+        if (row.value === def.value && enabled === (def.enabled !== false)) {
+          delete next[key];
+        } else {
+          next[key] = { value: row.value, enabled };
+        }
+      }
+      return next;
+    });
+  };
+
+  /** 恢复某行全局 Header 为项目默认值 */
+  const resetGlobalHeader = (index: number) => {
+    const key = globalHeaders[index]?.name.toLowerCase();
+    if (!key || !(key in globalHeaderEdits)) return;
+    setGlobalHeaderEdits((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  /** 把全局配置中的 Header 参数替换为请求页的工作副本，使本地修改在发送 / 生成代码时生效 */
+  const applyGlobalHeaderEdits = (globals: ProjectGlobals): ProjectGlobals => {
+    if (globalHeaders.length === 0) return globals;
+    const known = new Set(globalHeaders.map((item) => item.name.toLowerCase()));
+    return {
+      ...globals,
+      params: [
+        ...globals.params.filter(
+          (item) => item.in !== "header" || !known.has(item.name.toLowerCase()),
+        ),
+        ...globalHeaderRows
+          .filter((row) => row.key)
+          .map((row) => ({ in: "header" as const, name: row.key, value: row.value, enabled: row.enabled })),
+      ],
+    };
+  };
+
   // 发送序号：取消时自增使旧请求的结果失效
   const sendSeqRef = useRef(0);
   // 进行中请求的取消标识，取消时通知后端中断请求
@@ -373,7 +469,9 @@ function RequestEditor({
 
   /** 粘贴完整 URL 时将 query 同步到 Params 页签，避免请求地址与参数表重复维护。 */
   const handleUrlPaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
-    const parsed = extractUrlQuery(event.clipboardData.getData("text"));
+    const parsed = extractUrlQuery(
+      applyImportUrlRules(event.clipboardData.getData("text"), importUrlRules ?? []),
+    );
     if (!parsed) return;
     event.preventDefault();
     setUrl(parsed.url);
@@ -529,7 +627,7 @@ function RequestEditor({
       cookieJarId: projectId,
     };
     try {
-      const globals = await getProjectGlobals(projectId);
+      const globals = applyGlobalHeaderEdits(await getProjectGlobals(projectId));
       input = { ...input, ...resolveRequestWithEnv(input, environment, globals) };
     } catch (err) {
       console.error("读取环境配置失败", err);
@@ -704,6 +802,11 @@ function RequestEditor({
     setGlobalParamMenu(null);
     try {
       await upsertGlobalParam(projectId, paramIn, name, value);
+      // 同步下方全局 Header 表格，直接参考刚写入后的数据库状态
+      if (paramIn === "header") {
+        const globals = await getProjectGlobals(projectId);
+        setGlobalHeaders(globals.params.filter((item) => item.in === "header"));
+      }
       toast.success(t("editor.globalParamSaved", { name }));
     } catch (err) {
       console.error("保存全局参数失败", err);
@@ -798,7 +901,7 @@ function RequestEditor({
       params: toItems(params),
     };
     try {
-      const globals = await getProjectGlobals(projectId);
+      const globals = applyGlobalHeaderEdits(await getProjectGlobals(projectId));
       const resolved = resolveRequestWithEnv(input, environment, globals);
       input = {
         ...input,
@@ -913,7 +1016,7 @@ function RequestEditor({
             className={`request-tab${activeTab === tab ? " request-tab-active" : ""}`}
             onClick={() => setActiveTab(tab)}
           >
-            {editorTabLabel(tab)}
+            {tab}
             {tab === "Params" && params.length + pathParams.length > 0 && (
               <span className="request-tab-count">{params.length + pathParams.length}</span>
             )}
@@ -958,16 +1061,27 @@ function RequestEditor({
             )}
           </>
         ) : activeTab === "Headers" ? (
-          <KeyValueTable
-            title={t("editor.headersTitle")}
-            items={headers}
-            onChange={setHeaders}
-            keyPlaceholder={t("editor.headerKey")}
-            valuePlaceholder={t("editor.headerValue")}
-            globalParamIn="header"
-            onAddGlobalParam={showGlobalParamMenu}
-            enableable
-          />
+          <>
+            <KeyValueTable
+              title={t("editor.headersTitle")}
+              items={headers}
+              onChange={setHeaders}
+              keyPlaceholder={t("editor.headerKey")}
+              valuePlaceholder={t("editor.headerValue")}
+              keySuggestions={COMMON_HEADERS}
+              globalParamIn="header"
+              onAddGlobalParam={showGlobalParamMenu}
+              enableable
+            />
+            {globalHeaders.length > 0 && (
+            <GlobalHeaderTable
+              items={globalHeaderRows}
+              defaults={globalHeaders}
+              onChange={handleGlobalHeadersChange}
+              onReset={resetGlobalHeader}
+            />
+            )}
+          </>
         ) : activeTab === "Cookies" ? (
           <>
             <KeyValueTable
@@ -1044,11 +1158,7 @@ function RequestEditor({
               />
             )}
           </section>
-        ) : (
-          <div className="request-panel-placeholder">
-            {t("editor.wip", { tab: editorTabLabel(activeTab) })}
-          </div>
-        )}
+        ) : null}
       </div>
 
       {/* 返回响应 */}
@@ -1348,7 +1458,8 @@ function RequestEditor({
   );
 }
 
-/** 变量名输入框：默认直接输入新名称；点击右侧箭头展开已有变量列表选择（支持过滤与键盘导航） */
+/** 变量名输入框：默认直接输入新名称；聚焦即展开已有变量列表选择（支持过滤与键盘导航），
+    下拉复用 request-suggest 样式，与 Headers 参数名候选一致 */
 function VariableNameInput({
   value,
   options,
@@ -1398,7 +1509,7 @@ function VariableNameInput({
   };
 
   return (
-    <div className="response-var-combo">
+    <div className="request-suggest">
       <input
         ref={inputRef}
         role="combobox"
@@ -1409,35 +1520,21 @@ function VariableNameInput({
         spellCheck={false}
         value={value}
         placeholder={t("editor.varNamePlaceholder")}
+        onFocus={() => {
+          setOpen(true);
+          setActiveIndex(0);
+        }}
         onBlur={() => setOpen(false)}
         onChange={(event) => {
           onChange(event.target.value);
+          setOpen(true);
           setActiveIndex(0);
         }}
         onKeyDown={handleKeyDown}
       />
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            tabIndex={-1}
-            className={`response-var-combo-toggle${showList ? " response-var-combo-toggle-open" : ""}`}
-            aria-label={t("editor.varPickExisting")}
-            // mousedown 抢在输入框 blur 之前切换，preventDefault 避免焦点离开输入框
-            onMouseDown={(event) => {
-              event.preventDefault();
-              setActiveIndex(0);
-              setOpen((prev) => !prev);
-            }}
-          >
-            <ChevronDown />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{t("editor.varPickExisting")}</TooltipContent>
-      </Tooltip>
       {showList && (
         // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA combobox 模式要求 ul role="listbox"
-        <ul className="response-var-options" role="listbox" id={listId}>
+        <ul className="request-suggest-list" role="listbox" id={listId}>
           {filtered.map((item, index) => (
             <li
               key={item.name}
@@ -1446,15 +1543,15 @@ function VariableNameInput({
               role="option"
               tabIndex={-1}
               aria-selected={index === activeIndex}
-              className={`response-var-option${index === activeIndex ? " response-var-option-active" : ""}`}
+              className={index === activeIndex ? "is-active" : undefined}
               // mousedown 抢在输入框 blur 之前完成选择，preventDefault 避免抢焦点
               onMouseDown={(event) => {
                 event.preventDefault();
                 pick(item.name);
               }}
-              onMouseEnter={() => setActiveIndex(index)}
+              onPointerEnter={() => setActiveIndex(index)}
             >
-              <span className="response-var-option-name">{item.name}</span>
+              {item.name}
             </li>
           ))}
         </ul>
@@ -1611,6 +1708,7 @@ function KeyValueTable({
   keyPlaceholder = t("editor.paramKey"),
   valuePlaceholder = t("editor.paramValue"),
   fieldTypes,
+  keySuggestions,
   globalParamIn,
   onAddGlobalParam,
   enableable = false,
@@ -1620,6 +1718,8 @@ function KeyValueTable({
   onChange: (items: FormRow[]) => void;
   keyPlaceholder?: string;
   valuePlaceholder?: string;
+  /** 参数名输入框的候选列表（原生 datalist，点击弹出），如内置 Header 名 */
+  keySuggestions?: string[];
   /** 可选的字段类型列表；缺省不显示类型列 */
   fieldTypes?: FormFieldType[];
   /** 右键将行快速添加到对应类型的全局参数 */
@@ -1629,6 +1729,9 @@ function KeyValueTable({
   enableable?: boolean;
 }) {
   const typed = !!fieldTypes;
+  /** 参数名候选下拉：打开的行下标与键盘高亮项；-1 表示关闭 */
+  const [suggestRow, setSuggestRow] = useState(-1);
+  const [suggestActive, setSuggestActive] = useState(0);
   const tableRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [batchOpen, setBatchOpen] = useState(false);
@@ -1764,6 +1867,21 @@ function KeyValueTable({
         {[...items, { key: "", value: "", enabled: true } as FormRow].map((item, index) => {
           const isPlaceholder = index === items.length;
           const rowType: FormFieldType = item.fieldType ?? "text";
+          // 参数名候选：按输入过滤，并收起其他行已使用的候选
+          const suggestOptions =
+            keySuggestions && suggestRow === index
+              ? keySuggestions.filter(
+                  (name) =>
+                    name.toLowerCase().includes(item.key.trim().toLowerCase()) &&
+                    !items.some(
+                      (other, i) => i !== index && other.key.toLowerCase() === name.toLowerCase(),
+                    ),
+                )
+              : [];
+          const suggestActiveIndex = Math.min(
+            suggestActive,
+            Math.max(suggestOptions.length - 1, 0),
+          );
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: 受控键值行 + 末尾占位行，数据项无稳定 id，以索引定位（与 patchItem(index) 对应）
             <div
@@ -1799,12 +1917,71 @@ function KeyValueTable({
                   }
                 />
               )}
-              <input
-                aria-label={keyPlaceholder}
-                placeholder={isPlaceholder ? t("editor.addParam") : undefined}
-                value={item.key}
-                onChange={(event) => patchItem(index, { key: event.target.value })}
-              />
+              {keySuggestions ? (
+                <div className="request-suggest">
+                  <input
+                    aria-label={keyPlaceholder}
+                    placeholder={isPlaceholder ? t("editor.addParam") : undefined}
+                    value={item.key}
+                    role="combobox"
+                    aria-expanded={suggestRow === index && suggestOptions.length > 0}
+                    onChange={(event) => {
+                      patchItem(index, { key: event.target.value });
+                      setSuggestRow(index);
+                      setSuggestActive(0);
+                    }}
+                    onFocus={() => {
+                      setSuggestRow(index);
+                      setSuggestActive(0);
+                    }}
+                    onBlur={() => setSuggestRow(-1)}
+                    onKeyDown={(event) => {
+                      if (suggestRow !== index || suggestOptions.length === 0) return;
+                      if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        setSuggestActive((i) => Math.min(i + 1, suggestOptions.length - 1));
+                      } else if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        setSuggestActive((i) => Math.max(i - 1, 0));
+                      } else if (event.key === "Enter") {
+                        event.preventDefault();
+                        patchItem(index, { key: suggestOptions[suggestActiveIndex] });
+                        setSuggestRow(-1);
+                      } else if (event.key === "Escape") {
+                        setSuggestRow(-1);
+                      }
+                    }}
+                  />
+                  {suggestRow === index && suggestOptions.length > 0 && (
+                    <ul className="request-suggest-list" role="listbox">
+                      {suggestOptions.map((name, optionIndex) => (
+                        <li
+                          key={name}
+                          role="option"
+                          aria-selected={optionIndex === suggestActiveIndex}
+                          className={optionIndex === suggestActiveIndex ? "is-active" : undefined}
+                          onPointerEnter={() => setSuggestActive(optionIndex)}
+                          onMouseDown={(event) => {
+                            // mousedown 先于 input 失焦；preventDefault 保持焦点后写入并收起
+                            event.preventDefault();
+                            patchItem(index, { key: name });
+                            setSuggestRow(-1);
+                          }}
+                        >
+                          {name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <input
+                  aria-label={keyPlaceholder}
+                  placeholder={isPlaceholder ? t("editor.addParam") : undefined}
+                  value={item.key}
+                  onChange={(event) => patchItem(index, { key: event.target.value })}
+                />
+              )}
               {typed && (
                 <Select
                   value={rowType}
@@ -2303,6 +2480,91 @@ function suggestFileName(url: string, headers: Record<string, string>): string {
   if (segment.includes(".")) return segment;
   const contentType = (headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
   return (segment || "response") + (MIME_EXT[contentType] ?? "");
+}
+
+/** 全局 Header 表格：参数名只读，仅可修改参数值与启用状态（仅当前请求生效）；不支持增删行；
+ * 与项目默认值不一致的行提供恢复默认按钮 */
+function GlobalHeaderTable({
+  items,
+  defaults,
+  onChange,
+  onReset,
+}: {
+  items: QueryParam[];
+  defaults: GlobalParam[];
+  onChange: (items: QueryParam[]) => void;
+  onReset: (index: number) => void;
+}) {
+  const allEnabled = items.every((item) => item.enabled !== false);
+  const patchItem = (index: number, patch: Partial<QueryParam>) => {
+    onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  };
+
+  return (
+    <section className="request-params">
+      <div className="request-params-header">
+        <h4 className="request-params-title">{t("editor.globalHeaders")}</h4>
+      </div>
+      <div className="request-params-table">
+        <div className="request-params-head">
+          <input
+            type="checkbox"
+            className="request-params-check"
+            aria-label={t("editor.enableAll")}
+            checked={allEnabled}
+            onChange={() => onChange(items.map((item) => ({ ...item, enabled: !allEnabled })))}
+          />
+          <span>{t("editor.headerKey")}</span>
+          <span>{t("editor.headerValue")}</span>
+          <span aria-hidden="true" />
+        </div>
+        {items.map((item, index) => {
+          const def = defaults.find((d) => d.name.toLowerCase() === item.key.toLowerCase());
+          const modified =
+            !!def && (item.value !== def.value || item.enabled !== false !== (def.enabled !== false));
+          return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: 受控键值行，数据项无稳定 id，以索引定位（与 patchItem(index) 对应）
+          <div
+            key={index}
+            className={`request-params-row${item.enabled === false ? " request-params-row-disabled" : ""}`}
+          >
+            <input
+              type="checkbox"
+              className="request-params-check"
+              aria-label={t("editor.enableRow")}
+              checked={item.enabled !== false}
+              onChange={() => patchItem(index, { enabled: item.enabled === false })}
+            />
+            <input aria-label={t("editor.headerKey")} value={item.key} readOnly />
+            <input
+              aria-label={t("editor.headerValue")}
+              placeholder={t("editor.headerValue")}
+              value={item.value}
+              onChange={(event) => patchItem(index, { value: event.target.value })}
+            />
+            {modified ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="request-global-reset"
+                    aria-label={t("editor.resetGlobalHeader")}
+                    onClick={() => onReset(index)}
+                  >
+                    <RotateCcw />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t("editor.resetGlobalHeader")}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+          </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 export default RequestEditor;

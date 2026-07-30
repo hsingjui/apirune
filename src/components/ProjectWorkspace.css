@@ -911,24 +911,9 @@ body.is-sidebar-resizing {
 /* === 项目设置 === */
 
 .workspace-settings {
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
-  padding-top: 48px;
-}
-
-.workspace-settings-title {
-  margin: 0 0 24px;
-  font-size: 22px;
-  color: var(--color-text-1);
-}
-
-.workspace-settings-card {
-  width: min(520px, 100%);
-  padding: 24px;
-  border: 1px solid var(--color-neutral-3);
-  border-radius: var(--border-radius-large);
-  background-color: var(--color-bg-1);
-  box-shadow: var(--shadow-subtle);
+  padding: 0;
 }
 
 .workspace-settings-profile {
@@ -976,4 +961,130 @@ body.is-sidebar-resizing {
 .workspace-settings-mono {
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+/* === 项目设置：导入 URL 规则 === */
+
+.workspace-settings-hint {
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-3);
+}
+
+.workspace-settings-hint p {
+  margin: 0;
+}
+
+/* 导入 URL 规则示例列表：类型标签 + 匹配 → 替换代码片 + 说明 */
+.workspace-settings-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-settings-examples li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.workspace-settings-example-tag {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: var(--border-radius-small);
+  background-color: var(--c-accent-faint);
+  color: var(--c-accent);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.workspace-settings-examples code {
+  padding: 0 4px;
+  border-radius: var(--border-radius-small);
+  background-color: rgba(var(--gray-10), 0.05);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-2);
+}
+
+.workspace-settings-example-arrow {
+  color: var(--color-text-3);
+}
+
+.workspace-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+/* 导入 URL 规则表格：匹配 / 替换为 / 正则 / 删除（列布局；容器/.env-table 基础样式与表格输入框见 EnvironmentModal.css 与 global.css） */
+.env-rule-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 48px 36px;
+  align-items: center;
+}
+
+/* 表头去掉水平 padding 让 fr 列与行同宽逐列对齐；首列文字左缩进 12px 与输入框内文字起始位对齐 */
+.env-table-head.env-rule-grid {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.env-table-head.env-rule-grid span:nth-child(-n + 2) {
+  padding-left: 12px;
+}
+
+/* 正则列表头与下方居中的按钮对齐 */
+.env-table-head.env-rule-grid span:nth-child(3) {
+  padding-right: 0;
+  text-align: center;
+}
+
+/* 正则开关：.* 切换按钮，常显（含占位行）。沿用应用惯例：中性浅底 hover，焦陶浅底 + 焦陶文字表示激活 */
+.env-rule-regex {
+  justify-self: center;
+  padding: 2px 7px;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--c-ink-tertiary);
+  cursor: pointer;
+  transition:
+    background-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.env-rule-regex:hover {
+  background-color: rgba(var(--gray-10), 0.05);
+  color: var(--c-ink-primary);
+}
+
+.env-rule-regex.active,
+.env-rule-regex.active:hover {
+  background-color: var(--c-accent-faint);
+  color: var(--c-accent);
+}
+
+.env-rule-invalid {
+  color: var(--c-error) !important;
+  box-shadow: inset 0 0 0 1px var(--c-error) !important;
+}
+
+/* === 项目设置：分栏面板（结构与样式复用 SettingsModal.css 的 settings-layout/nav/content，此处仅给页面尺寸与描边） === */
+
+/* 铺满整页：无边距，仅靠导航轨与内容区的底色分界 */
+.workspace-settings-panel {
+  flex: 1;
+  height: auto;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }

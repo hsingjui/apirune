@@ -89,7 +89,7 @@ export function resolveRequestWithEnv(
 
   const cookies: { name: string; value: string }[] = [];
   for (const param of globals.params) {
-    if (!param.name) continue;
+    if (!param.name || param.enabled === false) continue;
     const name = replaceVariables(param.name, vars);
     const value = replaceVariables(param.value, vars);
     if (param.in === "header") {
