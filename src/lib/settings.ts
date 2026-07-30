@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   uiFont: "system",
   monoFont: "jetbrains",
   uiScale: 100,
+  radius: "default",
   language: detectSystemLanguage(),
   restoreTabs: true,
   requestTimeoutMs: 300_000,

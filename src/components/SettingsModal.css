@@ -336,6 +336,35 @@
   cursor: pointer;
 }
 
+/* === 外观：圆角选项按钮 ===
+   按钮形状即预览：border-radius 由内联样式按预设给出，不跟随全局 --radius */
+
+.settings-radius-list {
+  display: flex;
+  gap: 12px;
+}
+
+.settings-radius-btn {
+  padding: 8px 20px;
+  font-size: 13px;
+  color: var(--color-text-1);
+  border: 1.5px solid var(--c-border);
+  background-color: var(--c-surface-high);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.settings-radius-btn:hover {
+  border-color: var(--c-accent);
+}
+
+.settings-radius-btn-selected,
+.settings-radius-btn-selected:hover {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 1px var(--c-accent) inset;
+  color: var(--c-accent);
+}
+
 /* === 代理：请求类型复选 === */
 
 .settings-proxy-types {
@@ -517,51 +546,149 @@
 .settings-about {
   display: flex;
   flex-direction: column;
+  gap: 18px;
+  width: min(100%, 440px);
+  margin: 0 auto;
+  padding-top: 8px;
+}
+
+.settings-about-hero {
+  position: relative;
+  display: flex;
   align-items: center;
+  gap: 16px;
+  min-height: 126px;
+  padding: 20px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--c-canvas);
+  box-shadow: var(--shadow-subtle);
+  overflow: hidden;
+}
+
+.settings-about-hero::after {
+  position: absolute;
+  right: -24px;
+  bottom: -34px;
+  width: 118px;
+  height: 118px;
+  border: 1px solid var(--c-border);
+  border-radius: 50%;
+  content: "";
+  opacity: 0.7;
+}
+
+.settings-about-logo {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 74px;
+  height: 74px;
+  padding: 5px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--c-surface-high);
+  box-shadow: 0 8px 18px rgba(56, 53, 47, 0.08);
+}
+
+.settings-about-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.settings-about-intro {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  padding-top: 32px;
+  min-width: 0;
 }
 
 .settings-about-mark {
   font-family: var(--font-serif);
-  font-size: 32px;
-  letter-spacing: -0.03em;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1;
   color: var(--c-ink-primary);
 }
 
 .settings-about-slogan {
+  max-width: 220px;
   font-size: 13px;
+  line-height: 1.55;
   color: var(--c-ink-secondary);
 }
 
+.settings-about-version {
+  position: absolute;
+  z-index: 1;
+  top: 14px;
+  right: 14px;
+  padding: 3px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  background-color: var(--c-surface-high);
+  color: var(--c-ink-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
 .settings-about-rows {
-  display: flex;
-  flex-direction: column;
-  width: 320px;
-  margin-top: 24px;
-  padding: 4px 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
   border: 1px solid var(--c-border);
   border-radius: var(--border-radius-medium);
-  background-color: var(--c-canvas);
+  background-color: var(--c-surface-high);
+  overflow: hidden;
 }
 
 .settings-about-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--c-border);
-  font-size: 13px;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  padding: 15px 16px;
+  border-right: 1px solid var(--c-border);
 }
 
 .settings-about-row:last-child {
-  border-bottom: none;
+  border-right: none;
 }
 
-.settings-about-row span:first-child {
-  color: var(--c-ink-secondary);
+.settings-about-row dt {
+  color: var(--c-ink-tertiary);
+  font-size: 11px;
 }
 
-.settings-about-row span:last-child {
+.settings-about-row dd {
+  margin: 0;
+  overflow: hidden;
   color: var(--c-ink-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .settings-about-rows {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-about-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    border-right: none;
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  .settings-about-row:last-child {
+    border-bottom: none;
+  }
 }

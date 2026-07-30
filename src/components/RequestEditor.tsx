@@ -1,7 +1,7 @@
 import { open as openFileDialog, save as saveFileDialog } from "@tauri-apps/plugin-dialog";
+import CodeMirror from "@uiw/react-codemirror";
 import {
   ArrowDown,
-  Braces,
   ChevronRight,
   CircleAlert,
   CircleCheck,
@@ -10,6 +10,7 @@ import {
   Download,
   FolderOpen,
   Loader2,
+  Maximize2,
   Plus,
   RotateCcw,
   Search,
@@ -1122,12 +1123,6 @@ function RequestEditor({
                   </button>
                 ))}
               </div>
-              {bodyType === "json" && (
-                <button type="button" className="request-body-format" onClick={handleFormatBody}>
-                  <Braces aria-hidden="true" />
-                  {t("editor.format")}
-                </button>
-              )}
             </div>
             {bodyType === "none" ? (
               <div className="request-panel-placeholder">{t("editor.noBody")}</div>
@@ -1147,6 +1142,7 @@ function RequestEditor({
                 value={bodyText}
                 onChange={setBodyText}
                 placeholder={t("editor.jsonPlaceholder")}
+                onFormat={handleFormatBody}
               />
             ) : (
               <textarea
@@ -1694,6 +1690,105 @@ function BatchEditModal({
   );
 }
 
+const VALUE_FORMATS = ["text", "json"] as const;
+type ValueFormat = (typeof VALUE_FORMATS)[number];
+
+/** 参数值弹窗编辑器：行内输入空间有限时放大编辑；两种格式都用 CodeMirror，JSON 另带语法高亮与校验条 */
+function ValueEditModal({
+  visible,
+  initial,
+  valuePlaceholder,
+  onCancel,
+  onConfirm,
+}: {
+  visible: boolean;
+  initial: string;
+  valuePlaceholder: string;
+  onCancel: () => void;
+  onConfirm: (value: string) => void;
+}) {
+  const [format, setFormat] = useState<ValueFormat>("text");
+  const [text, setText] = useState("");
+
+  // 每次打开时回填当前值，重置为 Text 格式
+  useEffect(() => {
+    if (!visible) return;
+    setFormat("text");
+    setText(initial);
+  }, [visible, initial]);
+
+  /** 切到 JSON 时若当前文本已是合法 JSON，顺带缩进美化；否则保持原样，由编辑器校验条提示 */
+  const switchFormat = (next: ValueFormat) => {
+    if (next === "json") {
+      try {
+        setText(JSON.stringify(parseJsonWithComments(text), null, 2));
+      } catch {
+        // 非 JSON 文本无需处理
+      }
+    }
+    setFormat(next);
+  };
+
+  return (
+    <Dialog open={visible} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="value-edit-modal sm:max-w-[720px]" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t("editor.editValue")}</DialogTitle>
+        </DialogHeader>
+
+        <div className="batch-edit-toolbar">
+          <div
+            className="batch-edit-modes"
+            role="radiogroup"
+            aria-label={t("editor.valueFormatAria")}
+          >
+            {VALUE_FORMATS.map((item) => (
+              <button
+                key={item}
+                type="button"
+                role="radio"
+                aria-checked={format === item}
+                className={`batch-edit-mode${format === item ? " batch-edit-mode-active" : ""}`}
+                onClick={() => switchFormat(item)}
+              >
+                {t(item === "json" ? "editor.formatJson" : "editor.formatText")}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {format === "json" ? (
+          <JsonEditor value={text} onChange={setText} placeholder={valuePlaceholder} />
+        ) : (
+          /* 纯文本也用 CodeMirror，保持弹窗内编辑体验一致（不启用 JSON 高亮/校验） */
+          <div className="json-editor">
+            <CodeMirror
+              className="json-editor-cm"
+              value={text}
+              onChange={setText}
+              placeholder={valuePlaceholder}
+              theme="none"
+              autoFocus
+              basicSetup={{
+                foldGutter: false,
+                highlightActiveLine: false,
+                highlightActiveLineGutter: false,
+              }}
+            />
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+          <Button onClick={() => onConfirm(text)}>{t("common.confirm")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /** 从文件路径中取文件名（兼容 / 与 \ 分隔） */
 function fileNameOf(path: string): string {
   return path.split(/[\\/]/).pop() || path;
@@ -1735,6 +1830,8 @@ function KeyValueTable({
   const tableRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [batchOpen, setBatchOpen] = useState(false);
+  /** 弹窗编辑中的行号；null 表示未打开 */
+  const [editRow, setEditRow] = useState<number | null>(null);
   /** 悬停行下标；用 pointer 事件驱动，规避 macOS WKWebView 的 :hover 状态残留 */
   const [hoverRow, setHoverRow] = useState(-1);
   /** 当前悬停行的 DOM；供全局 pointermove 兑底判断指针是否已离开 */
@@ -2083,21 +2180,36 @@ function KeyValueTable({
                   </button>
                 </div>
               ) : (
-                <input
-                  aria-label={valuePlaceholder}
-                  value={item.value}
-                  onChange={(event) => patchItem(index, { value: event.target.value })}
-                  onKeyDown={
-                    typed
-                      ? undefined
-                      : (event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            focusRowKey(index + 1);
+                <div className="request-value-cell">
+                  <input
+                    aria-label={valuePlaceholder}
+                    value={item.value}
+                    onChange={(event) => patchItem(index, { value: event.target.value })}
+                    onKeyDown={
+                      typed
+                        ? undefined
+                        : (event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              focusRowKey(index + 1);
+                            }
                           }
-                        }
-                  }
-                />
+                    }
+                  />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="request-value-expand"
+                        aria-label={t("editor.expandValue")}
+                        onClick={() => setEditRow(index)}
+                      >
+                        <Maximize2 aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("editor.expandValue")}</TooltipContent>
+                  </Tooltip>
+                </div>
               )}
               {isPlaceholder ? (
                 <span aria-hidden="true" />
@@ -2130,6 +2242,16 @@ function KeyValueTable({
           onChange(next);
           setSelected(new Set());
           setBatchOpen(false);
+        }}
+      />
+      <ValueEditModal
+        visible={editRow !== null}
+        initial={editRow === null ? "" : (items[editRow]?.value ?? "")}
+        valuePlaceholder={valuePlaceholder}
+        onCancel={() => setEditRow(null)}
+        onConfirm={(value) => {
+          if (editRow !== null) patchItem(editRow, { value });
+          setEditRow(null);
         }}
       />
     </section>

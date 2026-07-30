@@ -827,11 +827,12 @@ html {
 }
 
 body {
-  /* 圆角：卡片/容器温润的 12~16px，按钮/输入框 8~12px */
+  /* 圆角：卡片/容器温润的 12~16px，按钮/输入框 8~12px
+     全部由外观设置的 --radius 派生（默认 10px 下还原 8/10/14） */
   --border-radius-none: 0;
-  --border-radius-small: 8px;
-  --border-radius-medium: 10px;
-  --border-radius-large: 14px;
+  --border-radius-small: calc(var(--radius) - 2px);
+  --border-radius-medium: var(--radius);
+  --border-radius-large: calc(var(--radius) + 4px);
   --border-radius-circle: 50%;
   /* 默认交给操作系统裁切；仅 macOS 的透明无边框窗口使用下方的 CSS 圆角。 */
   --window-border-radius: 0;

@@ -167,8 +167,14 @@ export function resolveFontStack(id: string, presets: FontOption[]): string {
 }
 
 /** 将主题与字体设置应用到文档根节点，启动时与设置变更时调用 */
+export const RADIUS_VALUES: Record<AppSettings["radius"], string> = {
+  sharp: "4px",
+  default: "10px",
+  round: "16px",
+};
+
 export function applyAppearance(
-  settings: Pick<AppSettings, "theme" | "uiFont" | "monoFont">,
+  settings: Pick<AppSettings, "theme" | "uiFont" | "monoFont" | "radius">,
 ): void {
   const root = document.documentElement;
   const theme = THEMES.find((item) => item.id === settings.theme) ?? THEMES[0];
@@ -183,4 +189,10 @@ export function applyAppearance(
   root.style.setProperty("--font-sans", uiFontStack);
   root.style.setProperty("--font-serif", uiFontStack);
   root.style.setProperty("--font-mono", resolveFontStack(settings.monoFont, MONO_FONTS));
+  /* 圆角选择，默认时移除内联值回落到 global.css 的 --radius */
+  if (settings.radius === "default") {
+    root.style.removeProperty("--radius");
+  } else {
+    root.style.setProperty("--radius", RADIUS_VALUES[settings.radius]);
+  }
 }

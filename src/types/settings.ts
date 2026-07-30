@@ -14,6 +14,8 @@ export interface AppSettings {
   monoFont: string;
   /** 界面缩放百分比：80–120 */
   uiScale: number;
+  /** 圆角预设：sharp 4px / default 10px / round 16px */
+  radius: "sharp" | "default" | "round";
   language: "zh-CN" | "en-US";
   /** 启动时恢复上次打开的项目标签 */
   restoreTabs: boolean;

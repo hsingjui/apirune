@@ -25,7 +25,7 @@ import CodeMirror, {
   ViewPlugin,
   type ViewUpdate,
 } from "@uiw/react-codemirror";
-import { CircleAlert, Copy } from "lucide-react";
+import { Braces, CircleAlert, Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -470,10 +470,12 @@ interface JsonEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** 提供时在编辑器内展示格式化按钮 */
+  onFormat?: () => void;
 }
 
 /** 带语法高亮与错误提示的 JSON 编辑器（请求体用） */
-export function JsonEditor({ value, onChange, placeholder }: JsonEditorProps) {
+export function JsonEditor({ value, onChange, placeholder, onFormat }: JsonEditorProps) {
   /** 语法错误信息；空内容或合法 JSON 为 null */
   const error = useMemo(() => {
     if (!value.trim()) return null;
@@ -505,6 +507,21 @@ export function JsonEditor({ value, onChange, placeholder }: JsonEditorProps) {
           highlightActiveLineGutter: false,
         }}
       />
+      {onFormat && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="json-format"
+              aria-label={t("editor.format")}
+              onClick={onFormat}
+            >
+              <Braces aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{t("editor.format")}</TooltipContent>
+        </Tooltip>
+      )}
       <JsonWrapButton wrap={wrap} onToggle={toggleWrap} />
       <JsonCopyButton text={value} />
       {error && (

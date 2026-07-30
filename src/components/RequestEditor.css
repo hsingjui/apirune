@@ -511,6 +511,81 @@
   color: rgb(var(--danger-6));
 }
 
+/* === 参数值编辑弹窗：加宽弹窗并抬高编辑区 ===
+ * 固定高度：大段文本/大 JSON 走编辑器内滚动条，不撑大弹窗 */
+
+.value-edit-modal .json-editor {
+  height: clamp(320px, 50vh, 560px);
+}
+
+/* CodeMirror 撑满编辑区，内容与边框等高 */
+.value-edit-modal .json-editor-cm {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.value-edit-modal .json-editor-cm .cm-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+/* === 参数值单元格：输入框 + 右内侧的扩展编辑按钮（绝对定位，避免布局挤压） === */
+
+.request-value-cell {
+  position: relative;
+  min-width: 0;
+}
+
+/* 包进容器后输入框不再是 grid 子项，需显式拉满列宽；右侧留出按钮位置 */
+.request-value-cell > input {
+  display: block;
+  width: 100%;
+  padding-right: 30px;
+}
+
+.request-value-expand {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--border-radius-small);
+  background: transparent;
+  color: var(--c-ink-tertiary);
+  cursor: pointer;
+  /* 同 request-params-remove：只用 visibility/opacity 显隐，不做过渡，规避 WKWebView 合成层残留 */
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    color var(--ease-out),
+    background-color var(--ease-out);
+}
+
+/* 鼠标悬在值输入框上（或输入框获得焦点）时才浮现 */
+.request-value-cell:hover .request-value-expand,
+.request-value-cell:focus-within .request-value-expand {
+  visibility: visible;
+  opacity: 1;
+}
+
+.request-value-expand:hover {
+  background-color: var(--c-accent-faint);
+  color: var(--c-accent);
+}
+
+.request-value-expand svg {
+  width: 13px;
+  height: 13px;
+}
+
 /* === 表单字段类型（text / file / array） === */
 
 /* 带类型列的表单行：多一列类型选择 */
@@ -854,35 +929,6 @@
   color: var(--c-accent);
 }
 
-/* 格式化按钮：与 body 类型胶囊同风格 */
-.request-body-format {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border: 1px solid var(--color-neutral-3);
-  border-radius: 9999px;
-  background-color: var(--color-bg-1);
-  color: var(--c-ink-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  transition:
-    color var(--ease-out),
-    border-color var(--ease-out),
-    background-color var(--ease-out);
-}
-
-.request-body-format svg {
-  width: 13px;
-  height: 13px;
-}
-
-.request-body-format:hover {
-  border-color: var(--c-accent);
-  background-color: var(--c-accent-faint);
-  color: var(--c-accent);
-}
-
 /* === JSON 编辑器 / 查看器（CodeMirror） === */
 
 .json-editor {
@@ -1053,7 +1099,8 @@
 
 /* 右上角浮动复制按钮：JSON 编辑器 / 查看器 / SSE 纯文本详情共用 */
 .json-copy,
-.json-wrap {
+.json-wrap,
+.json-format {
   position: absolute;
   top: 8px;
   right: 12px;
@@ -1072,7 +1119,8 @@
 }
 
 .json-copy:hover,
-.json-wrap:hover {
+.json-wrap:hover,
+.json-format:hover {
   color: var(--c-ink-primary);
   background-color: rgba(var(--gray-10), 0.05);
 }
@@ -1083,7 +1131,8 @@
 }
 
 .json-copy svg,
-.json-wrap svg {
+.json-wrap svg,
+.json-format svg {
   width: 14px;
   height: 14px;
 }
@@ -1091,6 +1140,11 @@
 /* 换行开关：位于复制按钮左侧，与复制按钮同尺寸 */
 .json-wrap {
   right: 46px;
+}
+
+/* 格式化：位于换行开关左侧 */
+.json-format {
+  right: 80px;
 }
 
 .json-wrap.is-on {

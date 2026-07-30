@@ -195,7 +195,8 @@
   gap: 8px;
   width: 300px;
   max-width: 100%;
-  height: 40px;
+  /* 与 Button 默认尺寸（h-9）同源用 rem：跟随根字号缩放，px 固定值在系统文字缩放下会与按钮错开 */
+  height: 2.25rem;
   padding: 0 12px;
   border: 1px solid transparent;
   border-radius: var(--border-radius-medium);

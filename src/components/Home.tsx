@@ -209,7 +209,7 @@ function Home({
             <span className="home-search-text">{t("home.searchPlaceholder")}</span>
             <kbd>{SEARCH_KBD}</kbd>
           </button>
-          <Button size="lg" onClick={onCreateProject}>
+          <Button onClick={onCreateProject}>
             <Plus />
             {t("home.newProject")}
           </Button>

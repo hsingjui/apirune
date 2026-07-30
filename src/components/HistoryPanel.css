@@ -85,9 +85,28 @@ body.is-history-resizing {
   gap: 8px;
 }
 
-.history-filter-method {
-  width: 118px;
+.history-filter-row .history-filter-method {
+  position: relative;
+  width: 104px;
+  height: 28px;
   flex-shrink: 0;
+  justify-content: center;
+  padding: 0 24px 0 8px;
+  font-size: 12px;
+  line-height: 1;
+  align-items: center;
+}
+
+.history-filter-row .history-filter-method > span {
+  width: 100%;
+  text-align: center;
+}
+
+.history-filter-row .history-filter-method > svg {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .history-filter-method-all {

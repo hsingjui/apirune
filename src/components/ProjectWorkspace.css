@@ -1078,7 +1078,7 @@ body.is-sidebar-resizing {
   box-shadow: inset 0 0 0 1px var(--c-error) !important;
 }
 
-/* === 项目设置：分栏面板（结构与样式复用 SettingsModal.css 的 settings-layout/nav/content，此处仅给页面尺寸与描边） === */
+/* === 项目设置：分栏面板（结构与样式复用 SettingsModal.css；右侧与左侧导航使用同一画布色） === */
 
 /* 铺满整页：无边距，仅靠导航轨与内容区的底色分界 */
 .workspace-settings-panel {
@@ -1087,4 +1087,8 @@ body.is-sidebar-resizing {
   border: none;
   border-radius: 0;
   box-shadow: none;
+}
+
+.workspace-settings-panel .settings-content {
+  background-color: var(--c-canvas);
 }

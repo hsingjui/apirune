@@ -665,7 +665,7 @@ function ProjectWorkspace({
                 onMouseEnter={positionHoverMenu}
                 onFocus={positionHoverMenu}
               >
-                <Button size="icon" aria-label={t("workspace.new")} aria-haspopup="menu">
+                <Button size="icon" className="size-7.5" aria-label={t("workspace.new")} aria-haspopup="menu">
                   <Plus />
                 </Button>
                 <div

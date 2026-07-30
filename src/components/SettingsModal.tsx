@@ -25,6 +25,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePersistentState } from "../hooks/usePersistentState";
+import logoUrl from "../assets/logo.svg";
 import { type Language, setLanguage, useI18n } from "../i18n";
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from "../lib/settings";
 import {
@@ -40,6 +41,7 @@ import {
 import {
   applyAppearance,
   FONT_PROBES,
+  RADIUS_VALUES,
   listFontFamilies,
   MONO_FONTS,
   type SystemFontFamily,
@@ -175,10 +177,10 @@ function SettingsModal({ visible, onClose }: SettingsModalProps) {
   }, [settings.uiScale]);
 
   // 主题与字体：变更即时应用到文档根节点
-  // biome-ignore lint/correctness/useExhaustiveDependencies: applyAppearance 仅取 theme/uiFont/monoFont，依赖已完整
+  // biome-ignore lint/correctness/useExhaustiveDependencies: applyAppearance 仅取 theme/uiFont/monoFont/radius，依赖已完整
   useEffect(() => {
     applyAppearance(settings);
-  }, [settings.theme, settings.uiFont, settings.monoFont]);
+  }, [settings.theme, settings.uiFont, settings.monoFont, settings.radius]);
 
   const activeSection = SECTIONS.find((item) => item.key === section) ?? SECTIONS[0];
 
@@ -261,6 +263,29 @@ function SettingsModal({ visible, onClose }: SettingsModalProps) {
                             </span>
                           </span>
                           <span className="settings-theme-name">{t(`theme.${theme.id}`)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="settings-field">
+                    <span className="settings-field-label">{t("settings.radius")}</span>
+                    <div
+                      className="settings-radius-list"
+                      role="radiogroup"
+                      aria-label={t("settings.radius")}
+                    >
+                      {(["sharp", "default", "round"] as const).map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          role="radio"
+                          aria-checked={settings.radius === item}
+                          className={`settings-radius-btn${settings.radius === item ? " settings-radius-btn-selected" : ""}`}
+                          style={{ borderRadius: RADIUS_VALUES[item] }}
+                          onClick={() => update({ radius: item })}
+                        >
+                          {t(`settings.radius.${item}`)}
                         </button>
                       ))}
                     </div>
@@ -703,22 +728,31 @@ function SettingsModal({ visible, onClose }: SettingsModalProps) {
 
               {section === "about" && (
                 <div className="settings-about">
-                  <span className="settings-about-mark">ApiRune</span>
-                  <span className="settings-about-slogan">{t("settings.aboutSlogan")}</span>
-                  <div className="settings-about-rows">
+                  <section className="settings-about-hero" aria-label="ApiRune">
+                    <div className="settings-about-logo">
+                      <img src={logoUrl} alt="ApiRune" />
+                    </div>
+                    <div className="settings-about-intro">
+                      <span className="settings-about-mark">ApiRune</span>
+                      <span className="settings-about-slogan">{t("settings.aboutSlogan")}</span>
+                    </div>
+                    <span className="settings-about-version">{version ? `v${version}` : "..."}</span>
+                  </section>
+
+                  <dl className="settings-about-rows">
                     <div className="settings-about-row">
-                      <span>{t("settings.version")}</span>
-                      <span>{version || "…"}</span>
+                      <dt>{t("settings.version")}</dt>
+                      <dd>{version || "..."}</dd>
                     </div>
                     <div className="settings-about-row">
-                      <span>{t("settings.framework")}</span>
-                      <span>Tauri 2 · React 19</span>
+                      <dt>{t("settings.framework")}</dt>
+                      <dd>Tauri 2 · React 19</dd>
                     </div>
                     <div className="settings-about-row">
-                      <span>{t("settings.storage")}</span>
-                      <span>{t("settings.storageValue")}</span>
+                      <dt>{t("settings.storage")}</dt>
+                      <dd>{t("settings.storageValue")}</dd>
                     </div>
-                  </div>
+                  </dl>
                 </div>
               )}
             </div>
