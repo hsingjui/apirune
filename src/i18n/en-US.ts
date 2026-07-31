@@ -52,6 +52,8 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   "home.emptyTitle": "No projects yet",
   "home.emptyDesc": "Create your first project to debug and manage your APIs",
   "home.rename": "Rename",
+  "home.setDefaultProject": "Set as default project",
+  "home.defaultProject": "Current default project",
   "home.lastSentAt": "Last sent {time}",
   "home.notSentToday": "No requests sent today",
 
@@ -223,10 +225,6 @@ export const enUS: Record<keyof typeof zhCN, string> = {
   "editor.sseNoMatch": "No matching events",
   "editor.colAttributes": "Attributes",
   "editor.noSetCookie": "No Set-Cookie in this response",
-  "editor.cookieJarHint":
-    "Session cookies are managed automatically: Set-Cookie from responses is remembered per project and sent with subsequent requests; cleared when the app exits.",
-  "editor.clearCookies": "Clear session cookies",
-  "editor.clearCookiesDone": "Session cookies for this project cleared",
   "editor.setAsVariable": "Set as Variable",
   "editor.varName": "Variable name",
   "editor.varNamePlaceholder": "Enter or choose a variable name, e.g. token",

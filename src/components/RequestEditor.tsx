@@ -43,12 +43,7 @@ import {
   upsertGlobalVariable,
 } from "../lib/environments";
 import { addHistory } from "../lib/history";
-import {
-  cancelHttpRequest,
-  clearProjectCookies,
-  saveResponseBody,
-  sendHttpRequest,
-} from "../lib/http";
+import { cancelHttpRequest, saveResponseBody, sendHttpRequest } from "../lib/http";
 import { createQuickRequest, updateQuickRequest } from "../lib/quickRequests";
 import { loadSettings, toProxyConfig } from "../lib/settings";
 import type {
@@ -224,15 +219,15 @@ function parseCookiePairs(value: string): QueryParam[] {
     .filter((pair) => pair.key);
 }
 
-/** 编辑器 Cookie 行 → Cookie 请求头值（过滤空 key） */
+/** 编辑器 Cookie 行 → Cookie 请求头值（过滤停用项与空 key） */
 function serializeCookies(pairs: QueryParam[]): string {
   return pairs
-    .filter((pair) => pair.key)
+    .filter((pair) => pair.enabled !== false && pair.key)
     .map((pair) => `${pair.key}=${pair.value}`)
     .join("; ");
 }
 
-/** 从手动粘贴的 URL 中拆出 query，URL 保留 hash 但不保留 query。 */
+/** 从 URL 中拆出 query，保留 hash 位置与 query 参数。 */
 function extractUrlQuery(value: string): { url: string; params: QueryParam[] } | null {
   const queryStart = value.indexOf("?");
   if (queryStart < 0) return null;
@@ -242,7 +237,22 @@ function extractUrlQuery(value: string): { url: string; params: QueryParam[] } |
   new URLSearchParams(value.slice(queryStart + 1, queryEnd)).forEach((value, key) => {
     params.push({ key, value, enabled: true });
   });
-  return { url: `${value.slice(0, queryStart)}${value.slice(queryEnd)}`, params };
+  return { url: value, params };
+}
+
+/** 将启用的 Query 参数写回 URL，保留路径与 hash。 */
+function applyQueryParams(url: string, pairs: QueryParam[]): string {
+  const queryStart = url.indexOf("?");
+  const hashStart = url.indexOf("#");
+  const baseEnd = queryStart >= 0 ? queryStart : hashStart >= 0 ? hashStart : url.length;
+  const base = url.slice(0, baseEnd);
+  const hash = hashStart >= 0 ? url.slice(hashStart) : "";
+  const query = new URLSearchParams();
+  pairs
+    .filter((pair) => pair.enabled !== false && pair.key)
+    .forEach((pair) => query.append(pair.key, pair.value));
+  const queryText = query.toString();
+  return `${base}${queryText ? `?${queryText}` : ""}${hash}`;
 }
 
 /** 路径参数占位符：单层花括号 {name}，不匹配环境变量的 {{name}} */
@@ -468,11 +478,23 @@ function RequestEditor({
     });
   }, [url]);
 
-  /** 粘贴完整 URL 时将 query 同步到 Params 页签，避免请求地址与参数表重复维护。 */
+  /** URL 变化时同步 Query 参数列表；没有 query 时清空列表。 */
+  const handleUrlChange = (value: string) => {
+    setUrl(value);
+    const parsed = extractUrlQuery(value);
+    setParams(parsed?.params ?? []);
+  };
+
+  /** 参数列表变化时同步回 URL，保持地址栏与列表使用同一份 Query 数据。 */
+  const handleParamsChange = (next: QueryParam[]) => {
+    setParams(next);
+    setUrl((current) => applyQueryParams(current, next));
+  };
+
+  /** 粘贴完整 URL 时同步 query 到 Params 页签，并保留地址栏中的 query。 */
   const handleUrlPaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
-    const parsed = extractUrlQuery(
-      applyImportUrlRules(event.clipboardData.getData("text"), importUrlRules ?? []),
-    );
+    const value = applyImportUrlRules(event.clipboardData.getData("text"), importUrlRules ?? []);
+    const parsed = extractUrlQuery(value);
     if (!parsed) return;
     event.preventDefault();
     setUrl(parsed.url);
@@ -588,7 +610,7 @@ function RequestEditor({
     // Cookies 页签的行合并为单个 Cookie 请求头
     headers: [
       ...toItems(headers),
-      ...(cookies.some((pair) => pair.key)
+      ...(cookies.some((pair) => pair.enabled !== false && pair.key)
         ? [{ key: "Cookie", value: serializeCookies(cookies), enabled: true }]
         : []),
     ],
@@ -624,8 +646,6 @@ function RequestEditor({
       followRedirects: appSettings.followRedirects,
       noCacheHeader: appSettings.noCacheHeader,
       proxy: toProxyConfig(appSettings),
-      // 会话 Cookie 按项目隔离：后端自动记住 Set-Cookie 并在后续请求回发
-      cookieJarId: projectId,
     };
     try {
       const globals = applyGlobalHeaderEdits(await getProjectGlobals(projectId));
@@ -762,17 +782,6 @@ function RequestEditor({
     } catch (err) {
       console.error("保存响应到文件失败", err);
       toast.error(t("editor.saveFileFailed"));
-    }
-  };
-
-  /** 清除本项目的会话 Cookie */
-  const handleClearCookies = async () => {
-    try {
-      await clearProjectCookies(projectId);
-      toast.success(t("editor.clearCookiesDone"));
-    } catch (err) {
-      console.error("清除会话 Cookie 失败", err);
-      toast.error(String(err));
     }
   };
 
@@ -977,7 +986,7 @@ function RequestEditor({
                 : t("editor.urlPlaceholder")
             }
             value={url}
-            onChange={(event) => setUrl(event.target.value)}
+            onChange={(event) => handleUrlChange(event.target.value)}
             onPaste={handleUrlPaste}
             style={{ ["--request-method-color" as string]: methodColor }}
           />
@@ -1052,7 +1061,7 @@ function RequestEditor({
             <KeyValueTable
               title={t("editor.queryParams")}
               items={params}
-              onChange={setParams}
+              onChange={handleParamsChange}
               globalParamIn="query"
               onAddGlobalParam={showGlobalParamMenu}
               enableable
@@ -1084,24 +1093,16 @@ function RequestEditor({
             )}
           </>
         ) : activeTab === "Cookies" ? (
-          <>
-            <KeyValueTable
-              title={t("editor.cookiesTitle")}
-              items={cookies}
-              onChange={setCookies}
-              keyPlaceholder={t("editor.cookieKey")}
-              valuePlaceholder={t("editor.cookieValue")}
-              globalParamIn="cookie"
-              onAddGlobalParam={showGlobalParamMenu}
-            />
-            <div className="request-cookies-panel">
-              <p className="request-cookies-hint">{t("editor.cookieJarHint")}</p>
-              <Button variant="outline" size="sm" onClick={handleClearCookies}>
-                <Trash2 aria-hidden="true" />
-                {t("editor.clearCookies")}
-              </Button>
-            </div>
-          </>
+          <KeyValueTable
+            title={t("editor.cookiesTitle")}
+            items={cookies}
+            onChange={setCookies}
+            keyPlaceholder={t("editor.cookieKey")}
+            valuePlaceholder={t("editor.cookieValue")}
+            globalParamIn="cookie"
+            onAddGlobalParam={showGlobalParamMenu}
+            enableable
+          />
         ) : activeTab === "Body" ? (
           <section className="request-body">
             <div className="request-body-toolbar">

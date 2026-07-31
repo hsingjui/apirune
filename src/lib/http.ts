@@ -22,11 +22,6 @@ export function cancelHttpRequest(cancelId: string): Promise<void> {
   return invoke("cancel_http_request", { cancelId });
 }
 
-/** 清除项目的会话 Cookie（后端按项目隔离的 cookie jar） */
-export function clearProjectCookies(projectId: string): Promise<void> {
-  return invoke("clear_project_cookies", { projectId });
-}
-
 /** 将响应体保存到本地文件；encoding 为 base64 时后端先解码为原始字节 */
 export function saveResponseBody(
   path: string,

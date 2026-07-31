@@ -21,7 +21,7 @@
   border-radius: var(--border-radius-large);
   background-color: var(--color-bg-2);
   box-shadow: var(--shadow-subtle);
-  /* key 重挂载时播放，作为刷新反馈 */
+  /* key 重挂载时淡入，避免整块缩放触发 Windows WebView 合成层边缘残影 */
   animation: app-content-refresh 0.4s ease;
 }
 
@@ -35,10 +35,8 @@
 @keyframes app-content-refresh {
   from {
     opacity: 0;
-    transform: scale(0.985);
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }

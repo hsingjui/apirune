@@ -1,4 +1,4 @@
-import { ChevronRight, Import, Pencil, Plus, Search, Trash2, Zap } from "lucide-react";
+import { ChevronRight, Import, Pencil, Plus, Search, Star, Trash2, Zap } from "lucide-react";
 import { type CSSProperties, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,6 +22,8 @@ interface HomeProps {
   onCreateProject: () => void;
   onEditProject: (project: Project) => void;
   onDeleteProject: (project: Project) => void;
+  defaultProjectId: string | null;
+  onDefaultProjectChange: (id: string) => void;
   /** 拖拽排序后回调，ids 为新顺序的项目 id 列表 */
   onReorderProjects: (ids: string[]) => void;
   /** 打开内置快速请求项目 */
@@ -121,6 +123,8 @@ function Home({
   onCreateProject,
   onEditProject,
   onDeleteProject,
+  defaultProjectId,
+  onDefaultProjectChange,
   onReorderProjects,
   onQuickRequest,
   onImportRequest,
@@ -260,6 +264,7 @@ function Home({
               })).filter((segment) => segment.count > 0);
               const total = Object.values(projectStats.methodCounts).reduce((a, b) => a + b, 0);
               const envNames = projectStats.environmentNames;
+              const isDefaultProject = project.id === defaultProjectId;
               return (
                 <div
                   key={project.id}
@@ -306,6 +311,26 @@ function Home({
                     }
                   }}
                 >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={`project-card-default${isDefaultProject ? " project-card-default-active" : ""}`}
+                        aria-label={`${t(isDefaultProject ? "home.defaultProject" : "home.setDefaultProject")} ${project.name}`}
+                        aria-pressed={isDefaultProject}
+                        aria-disabled={isDefaultProject}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (!isDefaultProject) onDefaultProjectChange(project.id);
+                        }}
+                      >
+                        <Star />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {t(isDefaultProject ? "home.defaultProject" : "home.setDefaultProject")}
+                    </TooltipContent>
+                  </Tooltip>
                   <div className="project-card-actions">
                     <Tooltip>
                       <TooltipTrigger asChild>

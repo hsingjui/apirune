@@ -20,6 +20,7 @@ import {
   ensureScratchProject,
   listProjects,
   reorderProjects,
+  SCRATCH_PROJECT_ID,
   updateProject,
 } from "./lib/projects";
 import { loadSettings } from "./lib/settings";
@@ -36,6 +37,10 @@ function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [openIds, setOpenIds] = usePersistentState<string[]>("apirune:open-tabs", []);
   const [activeId, setActiveId] = usePersistentState<string | null>("apirune:active-tab", null);
+  const [defaultProjectId, setDefaultProjectId] = usePersistentState<string | null>(
+    "apirune:default-project",
+    SCRATCH_PROJECT_ID,
+  );
   // 项目切换时保留各自已打开的请求标签；仅维持当前应用会话，避免恢复未保存编辑内容
   const [requestTabStates, setRequestTabStates] = useState<Record<string, RequestTabState>>({});
   // 创建/编辑共用同一个 Modal：editingProject 为 null 即创建模式
@@ -51,9 +56,19 @@ function App() {
   const [pendingCurl, setPendingCurl] = useState<ParsedCurl | null>(null);
   const [pendingCurlProjectId, setPendingCurlProjectId] = useState<string | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 仅在启动时加载项目并校正默认项目引用
   useEffect(() => {
     listProjects()
-      .then(setProjects)
+      .then((loadedProjects) => {
+        setProjects(loadedProjects);
+        if (
+          !defaultProjectId ||
+          (defaultProjectId !== SCRATCH_PROJECT_ID &&
+            !loadedProjects.some((project) => project.id === defaultProjectId))
+        ) {
+          setDefaultProjectId(SCRATCH_PROJECT_ID);
+        }
+      })
       .catch((error) => console.error("加载项目失败:", error));
   }, []);
 
@@ -147,6 +162,9 @@ function App() {
       });
       if (activeId === id) {
         setActiveId(null);
+      }
+      if (defaultProjectId === id) {
+        setDefaultProjectId(SCRATCH_PROJECT_ID);
       }
       setDeleteVisible(false);
       toast.success(t("app.projectDeleted", { name: target?.name ?? id }));
@@ -314,6 +332,8 @@ function App() {
             onCreateProject={openCreateModal}
             onEditProject={openEditModal}
             onDeleteProject={openDeleteModal}
+            defaultProjectId={defaultProjectId}
+            onDefaultProjectChange={setDefaultProjectId}
             onReorderProjects={handleReorderProjects}
             onQuickRequest={handleQuickRequest}
             onImportRequest={openHomeImport}

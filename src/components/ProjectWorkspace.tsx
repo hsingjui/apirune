@@ -92,8 +92,9 @@ interface RequestTab {
   name?: string;
 }
 
-/** 项目内请求标签页的会话状态；切换项目后用于恢复打开的标签与当前选中项 */
+/** 项目工作区的会话状态；切换项目或刷新内容区后恢复菜单与请求标签 */
 export interface RequestTabState {
+  section: SectionKey;
   tabs: RequestTab[];
   activeId: string | null;
 }
@@ -205,7 +206,7 @@ function ProjectWorkspace({
   onInitialCurlConsumed,
 }: ProjectWorkspaceProps) {
   const { t } = useI18n();
-  const [section, setSection] = useState<SectionKey>("apis");
+  const [section, setSection] = useState<SectionKey>(() => requestTabState?.section ?? "apis");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // 侧栏宽度全局持久化，重开应用后恢复上次拖拽的宽度
   const [sidebarWidth, setSidebarWidth] = usePersistentState("apirune:sidebar-width", 264);
@@ -244,8 +245,12 @@ function ProjectWorkspace({
     activeEnvIndex >= 0 ? ENV_BADGE_COLORS[activeEnvIndex % ENV_BADGE_COLORS.length] : null;
 
   useEffect(() => {
-    onRequestTabStateChange?.(project.id, { tabs: requestTabs, activeId: activeRequestId });
-  }, [activeRequestId, onRequestTabStateChange, project.id, requestTabs]);
+    onRequestTabStateChange?.(project.id, {
+      section,
+      tabs: requestTabs,
+      activeId: activeRequestId,
+    });
+  }, [activeRequestId, onRequestTabStateChange, project.id, requestTabs, section]);
 
   // 标签过多溢出时，激活标签变化 / 新开标签后自动滚动到可见区域；已在可视区内则不动
   const tabsScrollRef = useRef<HTMLDivElement | null>(null);

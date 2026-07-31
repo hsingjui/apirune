@@ -1885,15 +1885,6 @@ body.is-sse-resizing {
   overflow: auto;
 }
 
-/* 请求 Cookies 页签：会话 Cookie 说明与清除 */
-.request-cookies-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px;
-}
-
 /* 全局 Header 行的恢复默认按钮：复用小图标按钮尺寸 */
 .request-global-reset {
   display: inline-flex;
@@ -1921,13 +1912,6 @@ body.is-sse-resizing {
 .request-global-reset svg {
   width: 13px;
   height: 13px;
-}
-
-.request-cookies-hint {
-  margin: 0;
-  color: var(--color-text-3);
-  font-size: 13px;
-  line-height: 1.6;
 }
 
 /* 二进制响应：图片预览 / 保存到文件 */

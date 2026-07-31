@@ -529,10 +529,61 @@
   white-space: nowrap;
 }
 
-.project-card-actions {
+.project-card-default {
   position: absolute;
   top: 10px;
   right: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-neutral-3);
+  border-radius: var(--border-radius-medium);
+  background-color: var(--color-bg-1);
+  box-shadow: var(--shadow-subtle);
+  color: var(--color-text-2);
+  opacity: 0;
+  transform: translateY(-3px);
+  cursor: pointer;
+  transition:
+    opacity var(--ease-out),
+    transform var(--ease-out),
+    background-color var(--ease-out),
+    border-color var(--ease-out),
+    color var(--ease-out);
+}
+
+.project-card:hover .project-card-default,
+.project-card-default:focus-visible,
+.project-card-default-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.project-card-default:hover {
+  background-color: var(--color-fill-3);
+  color: var(--color-text-1);
+}
+
+.project-card-default-active,
+.project-card-default-active:hover {
+  border-color: var(--pi-amber);
+  background-color: color-mix(in srgb, var(--pi-amber) 10%, var(--color-bg-1));
+  color: var(--pi-amber);
+  cursor: default;
+}
+
+.project-card-default-active svg {
+  fill: currentColor;
+}
+
+.project-card-actions {
+  position: absolute;
+  top: 10px;
+  right: 44px;
   display: inline-flex;
   gap: 4px;
   opacity: 0;
@@ -542,9 +593,9 @@
     transform var(--ease-out);
 }
 
-/* focus-within：键盘 Tab 到操作钮时同样显现 */
+/* 鼠标移出后收起；键盘 Tab 聚焦操作钮时仍保持可见 */
 .project-card:hover .project-card-actions,
-.project-card:focus-within .project-card-actions {
+.project-card-actions:has(.project-card-action:focus-visible) {
   opacity: 1;
   transform: translateY(0);
 }

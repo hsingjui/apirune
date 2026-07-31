@@ -827,12 +827,12 @@ html {
 }
 
 body {
-  /* 圆角：卡片/容器温润的 12~16px，按钮/输入框 8~12px
-     全部由外观设置的 --radius 派生（默认 10px 下还原 8/10/14） */
+  /* 圆角：卡片/容器恰为外观设置的预设值（与设置页预览一致），按钮/输入框依次收窄。
+     方正(4px) 下 small 归零，呈现真正的方形角。 */
   --border-radius-none: 0;
-  --border-radius-small: calc(var(--radius) - 2px);
-  --border-radius-medium: var(--radius);
-  --border-radius-large: calc(var(--radius) + 4px);
+  --border-radius-small: calc(var(--radius) - 4px);
+  --border-radius-medium: calc(var(--radius) - 2px);
+  --border-radius-large: var(--radius);
   --border-radius-circle: 50%;
   /* 默认交给操作系统裁切；仅 macOS 的透明无边框窗口使用下方的 CSS 圆角。 */
   --window-border-radius: 0;
@@ -892,6 +892,11 @@ body {
 
 :root[data-platform="macos"] body {
   --window-border-radius: 12px;
+}
+
+/* Windows 全屏模糊遮罩按 DWM 圆角裁切；零内缩，避免重绘时直角合成层从四角漏出。 */
+:root[data-platform="windows"] [data-slot="dialog-overlay"] {
+  clip-path: inset(0 round 8px);
 }
 
 *,

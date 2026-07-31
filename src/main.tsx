@@ -8,10 +8,13 @@ import { applyAppearance } from "./lib/themes";
 import "./styles/global.css";
 import App from "./App";
 
-// 在首帧渲染前标记平台，macOS 透明窗口需要由页面层裁切圆角。
-document.documentElement.dataset.platform = navigator.userAgent.includes("Macintosh")
+// 在首帧渲染前标记平台，macOS 透明窗口和 Windows DWM 圆角需要页面侧适配。
+const userAgent = navigator.userAgent;
+document.documentElement.dataset.platform = userAgent.includes("Macintosh")
   ? "macos"
-  : "desktop";
+  : userAgent.includes("Windows")
+    ? "windows"
+    : "desktop";
 
 // 渲染前先应用主题与字体，避免启动闪烁
 applyAppearance(loadSettings());

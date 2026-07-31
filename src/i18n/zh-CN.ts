@@ -50,6 +50,8 @@ export const zhCN = {
   "home.emptyTitle": "还没有项目",
   "home.emptyDesc": "创建第一个项目，开始调试和管理你的 API",
   "home.rename": "重命名",
+  "home.setDefaultProject": "设为默认项目",
+  "home.defaultProject": "当前默认项目",
   "home.lastSentAt": "最后发送 {time}",
   "home.notSentToday": "今日未发送请求",
 
@@ -219,10 +221,6 @@ export const zhCN = {
   "editor.sseNoMatch": "没有匹配的事件",
   "editor.colAttributes": "属性",
   "editor.noSetCookie": "该响应没有 Set-Cookie",
-  "editor.cookieJarHint":
-    "会话 Cookie 由应用自动管理：响应中的 Set-Cookie 会按项目记住，并在后续请求中自动回发；退出应用后清空。",
-  "editor.clearCookies": "清除会话 Cookie",
-  "editor.clearCookiesDone": "已清除本项目的会话 Cookie",
   "editor.setAsVariable": "设为变量",
   "editor.varName": "变量名",
   "editor.varNamePlaceholder": "输入或选择变量名，如 token",
