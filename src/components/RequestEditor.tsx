@@ -323,7 +323,14 @@ function RequestEditor({
 }: RequestEditorProps) {
   useI18n();
   const [method, setMethod] = useState<string>(initial?.method ?? "GET");
-  const [url, setUrl] = useState(initial?.url ?? "");
+  const [url, setUrl] = useState(() =>
+    initial
+      ? applyQueryParams(
+          initial.url,
+          toPairs(initial.params?.filter((item) => item.type !== "path")),
+        )
+      : "",
+  );
   const [activeTab, setActiveTab] = useState<(typeof EDITOR_TABS)[number]>("Params");
   const [params, setParams] = useState<QueryParam[]>(() =>
     toPairs(initial?.params?.filter((item) => item.type !== "path")),
@@ -638,8 +645,8 @@ function RequestEditor({
     const appSettings = loadSettings();
     let input = {
       ...buildRequestInput(),
-      // 发送时将路径参数值替入 URL，params 仅保留 Query 参数，避免后端拼接成查询串
-      url: applyPathParams(url.trim(), pathParams),
+      // 地址栏中的 Query 是 Params 的镜像，发送时只保留 Params，避免重复追加
+      url: applyPathParams(applyQueryParams(url.trim(), []), pathParams),
       params: toItems(params),
       timeoutMs: appSettings.requestTimeoutMs,
       sslVerify: appSettings.sslVerify,
@@ -907,7 +914,7 @@ function RequestEditor({
   const handleOpenCodegen = async () => {
     let input: CodegenInput = {
       ...buildRequestInput(),
-      url: applyPathParams(url.trim(), pathParams),
+      url: applyPathParams(applyQueryParams(url.trim(), []), pathParams),
       params: toItems(params),
     };
     try {
